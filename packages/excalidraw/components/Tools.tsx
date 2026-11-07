@@ -30,6 +30,7 @@ import {
   frameToolIcon,
   EmbedIcon,
   stickyNoteToolIcon,
+  tableToolIcon,
 } from "./icons";
 
 import type {
@@ -122,6 +123,9 @@ export const TOOLS = defineTools({
     icon: stickyNoteToolIcon,
     letterKey: KEYS.N,
   },
+  table: {
+    icon: tableToolIcon,
+  },
   image: {
     icon: ImageIcon,
     numericKey: KEYS["9"],
@@ -186,7 +190,8 @@ export const getToolShortcut = (type: ToolbarToolType) => {
   const { numericKey } = TOOLS[type];
   return letter && numericKey != null
     ? `${letter} ${t("helpDialog.or")} ${numericKey}`
-    : `${letter || numericKey}`;
+    : // tools without a binding (e.g. table) have no shortcut to show
+      letter || numericKey || undefined;
 };
 
 export const findShapeByKey = (
@@ -334,6 +339,7 @@ export const LineToolButton = createToolButton("line");
 export const FreedrawToolButton = createToolButton("freedraw");
 export const TextToolButton = createToolButton("text");
 export const StickyNoteToolButton = createToolButton("stickynote");
+export const TableToolButton = createToolButton("table");
 export const ImageToolButton = createToolButton("image");
 export const EraserToolButton = createToolButton("eraser");
 export const FrameToolButton = createToolButton("frame");
