@@ -102,6 +102,7 @@ import {
   strokeRectWithRotation_simple,
   snapScrollToDevicePixels,
 } from "./helpers";
+import { getUnknownVariableHighlights } from "./unknownVariables";
 
 import type {
   AppState,
@@ -1473,6 +1474,70 @@ const renderCropHandles = (
   context.restore();
 };
 
+const UNKNOWN_VARIABLE_COLOR = {
+  [THEME.LIGHT]: { tint: "rgba(219, 105, 101, 0.16)", line: "#db6965" },
+  [THEME.DARK]: { tint: "rgba(255, 168, 165, 0.16)", line: "#ffa8a5" },
+} as const;
+
+/**
+ * The red tint and wavy underline under each unknown `{{name}}` of the
+ * selected or edited texts. Interactive layer only: the static canvas and the
+ * exports show the placeholder as plain text.
+ */
+const renderUnknownVariables = (
+  app: AppClassProperties,
+  context: CanvasRenderingContext2D,
+  appState: InteractiveCanvasAppState,
+  selectedElements: readonly NonDeletedExcalidrawElement[],
+  elementsMap: NonDeletedSceneElementsMap,
+) => {
+  const highlights = getUnknownVariableHighlights(
+    selectedElements,
+    appState.editingTextElement?.id ?? null,
+    app.scene.getVariables().map,
+    elementsMap,
+    app.renderEnvironment,
+  );
+  if (!highlights.length) {
+    return;
+  }
+  const { tint, line } = UNKNOWN_VARIABLE_COLOR[appState.theme];
+  const wave = 2;
+  for (const { cx, cy, angle, rects } of highlights) {
+    context.save();
+    context.translate(cx + appState.scrollX, cy + appState.scrollY);
+    context.rotate(angle);
+    context.fillStyle = tint;
+    context.strokeStyle = line;
+    context.lineWidth = 1.5;
+    for (const rect of rects) {
+      const x = rect.x - cx;
+      const y = rect.y - cy;
+      context.beginPath();
+      // the radius is 3px, but `roundRect` isn't everywhere
+      if (context.roundRect) {
+        context.roundRect(x - 1, y, rect.width + 2, rect.height, 3);
+      } else {
+        context.rect(x - 1, y, rect.width + 2, rect.height);
+      }
+      context.fill();
+
+      const baseline = y + rect.height - 1;
+      context.beginPath();
+      context.moveTo(x, baseline);
+      for (let dx = 0; dx < rect.width; dx += wave * 2) {
+        context.lineTo(
+          Math.min(x + dx + wave, x + rect.width),
+          baseline - wave,
+        );
+        context.lineTo(Math.min(x + dx + wave * 2, x + rect.width), baseline);
+      }
+      context.stroke();
+    }
+    context.restore();
+  }
+};
+
 const renderTextBox = (
   text: ExcalidrawTextElement,
   context: CanvasRenderingContext2D,
@@ -2101,6 +2166,14 @@ const _renderInteractiveScene = ({
       context.restore();
     }
   });
+
+  renderUnknownVariables(
+    app,
+    context,
+    appState,
+    selectedElements,
+    allElementsMap,
+  );
 
   renderSnaps(context, appState);
 

@@ -48,6 +48,7 @@ import { useAppProps, useEditorInterface, useStylesPanelMode } from "./App";
 import { OverwriteConfirmDialog } from "./OverwriteConfirm/OverwriteConfirm";
 import { sidebarRightIcon } from "./icons";
 import { DefaultSidebar } from "./DefaultSidebar";
+import { UnknownVariableTooltip } from "./UnknownVariableTooltip";
 import { VariableAutocomplete } from "./VariableAutocomplete";
 import { TTDDialog } from "./TTDDialog/TTDDialog";
 import { Stats } from "./Stats";
@@ -584,6 +585,7 @@ const LayerUI = ({
       )}
       <ActiveConfirmDialog />
       <VariableAutocomplete />
+      <UnknownVariableTooltip />
       {defaultUIEnabled && appState.openDialog?.name === "elementLinkSelector" && (
         <ElementLinkDialog
           sourceElementId={appState.openDialog.sourceElementId}
