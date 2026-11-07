@@ -50,11 +50,7 @@ export const actionTextAutoResize = register({
     }
 
     const text = getResolvedOriginalText(target, app.scene.getVariables().map);
-    const metrics = measureText(
-      text,
-      getFontString(target),
-      target.lineHeight,
-    );
+    const metrics = measureText(text, getFontString(target), target.lineHeight);
 
     // unwrapping resizes the box, so keep the point the text's alignment pins
     // — otherwise a right-aligned or centred text slides sideways, and one

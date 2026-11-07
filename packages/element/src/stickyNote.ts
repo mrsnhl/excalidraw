@@ -20,6 +20,8 @@ import {
 
 import { clamp } from "@excalidraw/math";
 
+import type { VariableMap } from "@excalidraw/common";
+
 import { updateBoundElements } from "./binding";
 import { newElementWith } from "./mutateElement";
 import { getPositionAfterHeightChange } from "./sizeHelpers";
@@ -28,8 +30,6 @@ import { measureText } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
 import { isStickyNoteElement, isTextElement } from "./typeChecks";
 import { buildVariableMap, getResolvedOriginalText } from "./variables";
-
-import type { VariableMap } from "@excalidraw/common";
 
 import type { RenderEnvironment } from "./renderEnvironment";
 import type { Scene } from "./Scene";
@@ -708,8 +708,7 @@ export const getStickyNoteLayout = (
   }
 
   const originalText =
-    opts.originalText ??
-    getResolvedOriginalText(textElement, opts.variables);
+    opts.originalText ?? getResolvedOriginalText(textElement, opts.variables);
   const baseFontSize = normalizeStickyNoteFontSize(
     opts.baseFontSize ?? textElement.baseFontSize ?? textElement.fontSize,
   );

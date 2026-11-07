@@ -130,7 +130,7 @@ export const refreshVariableDependents = <T extends ExcalidrawElement>(
   const skipIds = opts.skipIds ?? new Set<string>();
 
   const staleTextIds: string[] = [];
-  let hasStaleTables = false;
+  const hasStaleTables = false;
 
   for (const element of elements) {
     if (
@@ -155,8 +155,8 @@ export const refreshVariableDependents = <T extends ExcalidrawElement>(
         verifiedFresh.set(element, getFreshnessKey(element, variables.version));
       }
     }
-    // tables: wired after merge (sets `hasStaleTables` for the tables with
-    // cells that reference variables and a layout that's out of date)
+    // tables: wired after merge (change `hasStaleTables` to `let`, and set it for the tables with
+    // cells that reference variables and a layout that is out of date)
   }
 
   if (!staleTextIds.length && !hasStaleTables) {

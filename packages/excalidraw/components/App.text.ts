@@ -203,10 +203,7 @@ export class AppText {
       }
 
       const nextText = resolve
-        ? resolveVariables(
-            nextOriginalText,
-            this.app.scene.getVariables().map,
-          )
+        ? resolveVariables(nextOriginalText, this.app.scene.getVariables().map)
         : nextOriginalText;
       const container = getContainerElement(latestTextElement, elementsMap);
       const stickyContainer =

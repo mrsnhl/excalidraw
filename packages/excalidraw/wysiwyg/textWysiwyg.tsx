@@ -74,9 +74,9 @@ import {
   actionZoomOut,
 } from "../actions/actionCanvas";
 
-import type { ParsedDataTranferList } from "../clipboard";
-
 import { attachVariableAutocomplete } from "../components/VariableAutocomplete";
+
+import type { ParsedDataTranferList } from "../clipboard";
 
 import type App from "../components/App";
 import type { AppState } from "../types";
