@@ -1423,6 +1423,16 @@ export interface ExcalidrawImperativeAPI {
     "select" | "add" | "remove" | "clear"
   >;
   getSceneElements: InstanceType<typeof App>["getSceneElements"];
+  /** the scene variables (`{{name}}` in texts): name -> value */
+  getVariables: () => Record<string, string>;
+  /**
+   * Upserts the variables by name, `null` deletes the variable. One history
+   * entry unless `captureUpdate` says otherwise.
+   */
+  setVariables: (
+    variables: Record<string, string | null>,
+    opts?: { captureUpdate?: CaptureUpdateActionType },
+  ) => void;
   getAppState: () => InstanceType<typeof App>["state"];
   getFiles: () => InstanceType<typeof App>["files"];
   getName: InstanceType<typeof App>["getName"];

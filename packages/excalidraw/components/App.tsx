@@ -816,6 +816,8 @@ class App extends React.Component<AppProps, AppState> {
       getViewportOffsets: this.viewport.getOffsets,
       setElementRenderOverrides: this.setElementRenderOverrides,
       getSceneElements: this.getSceneElements,
+      getVariables: this.variables.get,
+      setVariables: this.variables.set,
       getAppState: () => this.state,
       getFiles: () => this.files,
       getName: this.getName,
@@ -2776,8 +2778,17 @@ class App extends React.Component<AppProps, AppState> {
     return this.scene.getElementsMapIncludingDeleted();
   };
 
+  /**
+   * The non-deleted elements, including the hidden variable ones: hosts that
+   * persist what this returns keep the scene variables.
+   */
   public getSceneElements = () => {
-    return this.scene.getNonDeletedElements();
+    return this.scene
+      .getElementsIncludingDeleted()
+      .filter(
+        (element): element is Ordered<NonDeletedExcalidrawElement> =>
+          !element.isDeleted,
+      );
   };
 
   public onInsertElements = (elements: readonly ExcalidrawElement[]) => {

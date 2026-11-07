@@ -1,11 +1,18 @@
 import {
   CaptureUpdateAction,
+  buildVariableMap,
+  getWinningVariableElements,
   isValidVariableName,
+  newElementWith,
   newVariableElement,
   refreshVariableDependents,
 } from "@excalidraw/element";
 
-import type { ExcalidrawVariableElement } from "@excalidraw/element/types";
+import type { CaptureUpdateActionType } from "@excalidraw/element";
+import type {
+  ExcalidrawElement,
+  ExcalidrawVariableElement,
+} from "@excalidraw/element/types";
 
 import type { ClipboardVariable } from "../clipboard";
 
@@ -48,6 +55,65 @@ export class AppVariables {
     }
     return [...created.values()];
   }
+
+  /** the name -> value map the texts resolve against */
+  public get = (): Record<string, string> =>
+    Object.fromEntries(this.app.scene.getVariables().map);
+
+  /**
+   * Upserts the variables by name, `null` deletes. Goes through a single
+   * update, so that the change and the texts it re-derives are one history
+   * entry (with the default `captureUpdate`).
+   */
+  public set = (
+    variables: Record<string, string | null>,
+    opts?: { captureUpdate?: CaptureUpdateActionType },
+  ) => {
+    const elements = this.app.scene.getElementsIncludingDeleted();
+    const winners = new Map(
+      getWinningVariableElements(elements).map((el) => [el.name, el]),
+    );
+    const replaced = new Map<string, ExcalidrawElement>();
+    const added: ExcalidrawVariableElement[] = [];
+
+    for (const [name, value] of Object.entries(variables)) {
+      if (!isValidVariableName(name)) {
+        console.warn(`setVariables: invalid variable name "${name}"`);
+        continue;
+      }
+      const existing = winners.get(name);
+      if (value === null) {
+        if (existing) {
+          replaced.set(
+            existing.id,
+            newElementWith(existing, { isDeleted: true }),
+          );
+        }
+      } else if (existing) {
+        if (existing.value !== value) {
+          replaced.set(existing.id, newElementWith(existing, { value }));
+        }
+      } else {
+        added.push(newVariableElement({ name, value }));
+      }
+    }
+
+    if (!replaced.size && !added.length) {
+      return;
+    }
+
+    const nextElements = [
+      ...elements.map((element) => replaced.get(element.id) ?? element),
+      ...added,
+    ];
+    this.app.updateScene({
+      elements: refreshVariableDependents(nextElements, {
+        variables: buildVariableMap(nextElements),
+        renderEnvironment: this.app.renderEnvironment,
+      }),
+      captureUpdate: opts?.captureUpdate ?? CaptureUpdateAction.IMMEDIATELY,
+    });
+  };
 
   /**
    * To be called on each update, before the elements are read and the store

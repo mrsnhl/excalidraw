@@ -52,6 +52,7 @@ import {
   newImageElement,
   newLinearElement,
   newMagicFrameElement,
+  newVariableElement,
   newTextElement,
   type ElementConstructorOpts,
   newStickyNoteElement,
@@ -95,6 +96,7 @@ import type {
   ExcalidrawImageElement,
   ExcalidrawLinearElement,
   ExcalidrawMagicFrameElement,
+  ExcalidrawVariableElement,
   ExcalidrawSelectionElement,
   ExcalidrawTextElement,
   FileId,
@@ -278,7 +280,12 @@ export type ExcalidrawElementSkeleton =
       type: "magicframe";
       children: readonly ExcalidrawElement["id"][];
       name?: string;
-    } & Partial<ExcalidrawMagicFrameElement>);
+    } & Partial<ExcalidrawMagicFrameElement>)
+  | ({
+      type: "variable";
+      name: string;
+      value?: string;
+    } & Partial<Omit<ExcalidrawVariableElement, "name" | "value">>);
 
 const DEFAULT_LINEAR_ELEMENT_PROPS = {
   width: 100,
@@ -795,6 +802,15 @@ export const convertToExcalidrawElements = (
           x: 0,
           y: 0,
           ...element,
+        });
+        break;
+      }
+      case "variable": {
+        const { name, value, ...rest } = element;
+        excalidrawElement = newVariableElement({
+          ...rest,
+          name,
+          value: value ?? "",
         });
         break;
       }
