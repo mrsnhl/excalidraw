@@ -5,6 +5,8 @@ import {
   COLOR_PALETTE,
   DEFAULT_FONT_SIZE,
   DEFAULT_SIDEBAR,
+  DEFAULT_TABLE_COLUMN_WIDTH,
+  DEFAULT_TABLE_ROW_HEIGHT,
   FONT_FAMILY,
   getLineHeight,
   ROUNDNESS,
@@ -26,6 +28,7 @@ import type {
   ExcalidrawElement,
   ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   FractionalIndex,
 } from "@excalidraw/element/types";
@@ -112,6 +115,52 @@ describe("restoreElements", () => {
     const restoredElement = restore.restoreElements([stickyNote], null)[0];
 
     expect(restoredElement.strokeColor).toBe(COLOR_PALETTE.black);
+  });
+
+  describe("tables", () => {
+    it("makes a ragged grid rectangular and defaults the sizes", () => {
+      const table = {
+        ...API.createElement({ type: "table", rows: 2, columns: 2 }),
+        cells: [["a"], ["b", "c", 7 as unknown as string]],
+        columnWidths: [100],
+        rowBaseHeights: [50, Number.NaN],
+        rowHeights: [10],
+      } as ExcalidrawTableElement;
+
+      const [restored] = restore.restoreElements([table], null) as [
+        ExcalidrawTableElement,
+      ];
+
+      expect(restored.cells).toEqual([
+        ["a", "", ""],
+        ["b", "c", "7"],
+      ]);
+      expect(restored.columnWidths).toEqual([
+        100,
+        DEFAULT_TABLE_COLUMN_WIDTH,
+        DEFAULT_TABLE_COLUMN_WIDTH,
+      ]);
+      expect(restored.rowBaseHeights).toEqual([50, DEFAULT_TABLE_ROW_HEIGHT]);
+      // laid-out heights never drop below the base
+      expect(restored.rowHeights[0]).toBe(50);
+      expect(restored.headerRow).toBe(false);
+    });
+
+    it("keeps a valid table intact", () => {
+      const table = API.createElement({
+        type: "table",
+        cells: [
+          ["a", "{{name}}"],
+          ["c", "d"],
+        ],
+      }) as ExcalidrawTableElement;
+      const [restored] = restore.restoreElements([table], null) as [
+        ExcalidrawTableElement,
+      ];
+      expect(restored.cells).toEqual(table.cells);
+      expect(restored.columnWidths).toEqual(table.columnWidths);
+      expect(restored.rowHeights).toEqual(table.rowHeights);
+    });
   });
 
   it("when imported data state is null it should return an empty array of elements", () => {
