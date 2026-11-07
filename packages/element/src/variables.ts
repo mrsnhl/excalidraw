@@ -4,12 +4,13 @@ import type { VariableMap } from "@excalidraw/common";
 
 import { newElementWith } from "./mutateElement";
 
-import { isTextElement, isVariableElement } from "./typeChecks";
+import { isTableElement, isTextElement, isVariableElement } from "./typeChecks";
 
 import { hashString } from ".";
 
 import type {
   ExcalidrawElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   ExcalidrawVariableElement,
 } from "./types";
@@ -133,8 +134,10 @@ export const countVariableUsage = (
     }
     if (isTextElement(element)) {
       count(element.originalText);
+    } else if (isTableElement(element)) {
+      // all the cells of a table count as one element
+      count(element.cells.map((row) => row.join("\n")).join("\n"));
     }
-    // tables: wired after merge (count the references in `table.cells`)
   }
   return usage;
 };
@@ -162,7 +165,22 @@ export const rewriteVariableTexts = <T extends ExcalidrawElement>(
         }) as ExcalidrawElement as T;
       }
     }
-    // tables: wired after merge (rewrite `table.cells`)
+    if (isTableElement(element)) {
+      let cellsChanged = false;
+      const cells = element.cells.map((row) =>
+        row.map((cell) => {
+          const next = rewrite(cell);
+          cellsChanged ||= next !== cell;
+          return next;
+        }),
+      );
+      if (cellsChanged) {
+        changed = true;
+        return newElementWith<ExcalidrawTableElement>(element, {
+          cells,
+        }) as ExcalidrawElement as T;
+      }
+    }
     return element;
   });
   return changed ? next : elements;

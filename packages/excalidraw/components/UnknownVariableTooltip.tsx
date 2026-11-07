@@ -48,6 +48,7 @@ export const UnknownVariableTooltip = () => {
         app.scene.getVariables().map,
         app.scene.getNonDeletedElementsMap(),
         app.renderEnvironment,
+        state.activeTableCell?.editing ? state.activeTableCell : null,
       );
       if (!highlights.length) {
         setHover((hover) => (hover ? null : hover));

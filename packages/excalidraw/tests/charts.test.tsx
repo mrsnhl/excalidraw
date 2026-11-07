@@ -1,4 +1,4 @@
-import { tryParseSpreadsheet } from "../charts";
+import { tryParseSpreadsheet, tryParseTable } from "../charts";
 
 describe("tryParseSpreadsheet", () => {
   it("works for numbers with comma in them", () => {
@@ -160,5 +160,42 @@ B\t20`,
         series: [{ title: "Value", values: [10, 20] }],
       },
     });
+  });
+});
+
+describe("tryParseTable", () => {
+  it("parses TSV", () => {
+    expect(tryParseTable("a\tb\nc\td")).toEqual({
+      ok: true,
+      cells: [
+        ["a", "b"],
+        ["c", "d"],
+      ],
+      delimiter: "\t",
+    });
+  });
+
+  it("parses CSV with quoted cells", () => {
+    const result = tryParseTable('name,note\n"Ada, L.","said ""hi"""\nLin,ok');
+    expect(result).toEqual({
+      ok: true,
+      cells: [
+        ["name", "note"],
+        ["Ada, L.", 'said "hi"'],
+        ["Lin", "ok"],
+      ],
+      delimiter: ",",
+    });
+  });
+
+  it("ignores trailing blank lines", () => {
+    const result = tryParseTable("a\tb\nc\td\n\n");
+    expect(result.ok && result.cells).toHaveLength(2);
+  });
+
+  it("rejects ragged and single-column text", () => {
+    expect(tryParseTable("a\tb\nc").ok).toBe(false);
+    expect(tryParseTable("just\nsome\nlines").ok).toBe(false);
+    expect(tryParseTable("").ok).toBe(false);
   });
 });

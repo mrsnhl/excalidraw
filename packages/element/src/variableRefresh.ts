@@ -1,12 +1,18 @@
-import { arrayToMap, resolveVariables } from "@excalidraw/common";
+import {
+  arrayToMap,
+  hasVariablePlaceholders,
+  resolveVariables,
+} from "@excalidraw/common";
 
 import { updateBoundElements } from "./binding";
 import { refreshTextDimensions } from "./newElement";
 import { Scene } from "./Scene";
 import { updateStickyNoteLayout } from "./stickyNote";
+import { refreshTableLayout } from "./table";
 import { getContainerElement, redrawTextBoundingBox } from "./textElement";
 import {
   isStickyNoteElement,
+  isTableElement,
   isTextElement,
   isVariableElement,
 } from "./typeChecks";
@@ -16,6 +22,7 @@ import type { RenderEnvironment } from "./renderEnvironment";
 import type { SceneVariables } from "./variables";
 import type {
   ExcalidrawElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   NonDeletedExcalidrawElement,
 } from "./types";
@@ -96,15 +103,53 @@ const refreshStaleTexts = (
   }
 };
 
-// tables: wired after merge
-// Re-lays out the tables (`refreshTableLayout(table, variables.map)`) whose
-// cells reference variables, inside the (scratch) scene. Mutates it.
+const tableHasPlaceholders = (table: ExcalidrawTableElement) =>
+  table.cells.some((row) => row.some(hasVariablePlaceholders));
+
+/**
+ * A table is stale when its row heights no longer fit its cells with the
+ * current variable values (the cells themselves always hold the raw text).
+ */
+const isTableStale = (
+  table: ExcalidrawTableElement,
+  variables: SceneVariables,
+  renderEnvironment: RenderEnvironment | undefined,
+) => {
+  const { rowHeights, height } = refreshTableLayout(
+    table,
+    variables.map,
+    renderEnvironment,
+  );
+  return (
+    height !== table.height ||
+    rowHeights.some((rowHeight, row) => rowHeight !== table.rowHeights[row])
+  );
+};
+
+/**
+ * Re-lays out the given tables inside the (scratch) scene, so their row
+ * heights follow the resolved cell text. Mutates the scene.
+ */
 const refreshStaleTables = (
-  _scene: Scene,
-  _variables: SceneVariables,
-  _skipIds: ReadonlySet<string>,
-  _renderEnvironment: RenderEnvironment | undefined,
-) => {};
+  scene: Scene,
+  tableIds: readonly string[],
+  variables: SceneVariables,
+  renderEnvironment: RenderEnvironment | undefined,
+) => {
+  for (const id of tableIds) {
+    const table = scene.getElement(id);
+    if (!table || !isTableElement(table) || table.isDeleted) {
+      continue;
+    }
+    scene.mutateElement(
+      table,
+      refreshTableLayout(table, variables.map, renderEnvironment),
+    );
+    updateBoundElements(table as NonDeletedExcalidrawElement, scene, {
+      renderEnvironment,
+    });
+  }
+};
 
 /**
  * Re-derives the displayed text of the elements that reference variables and
@@ -130,7 +175,7 @@ export const refreshVariableDependents = <T extends ExcalidrawElement>(
   const skipIds = opts.skipIds ?? new Set<string>();
 
   const staleTextIds: string[] = [];
-  const hasStaleTables = false;
+  const staleTableIds: string[] = [];
 
   for (const element of elements) {
     if (
@@ -155,11 +200,19 @@ export const refreshVariableDependents = <T extends ExcalidrawElement>(
         verifiedFresh.set(element, getFreshnessKey(element, variables.version));
       }
     }
-    // tables: wired after merge (change `hasStaleTables` to `let`, and set it for the tables with
-    // cells that reference variables and a layout that is out of date)
+    if (isTableElement(element)) {
+      if (!tableHasPlaceholders(element)) {
+        continue;
+      }
+      if (isTableStale(element, variables, opts.renderEnvironment)) {
+        staleTableIds.push(element.id);
+      } else {
+        verifiedFresh.set(element, getFreshnessKey(element, variables.version));
+      }
+    }
   }
 
-  if (!staleTextIds.length && !hasStaleTables) {
+  if (!staleTextIds.length && !staleTableIds.length) {
     return elements;
   }
 
@@ -170,7 +223,7 @@ export const refreshVariableDependents = <T extends ExcalidrawElement>(
   scratch.replaceAllElements(copies, { skipValidation: true });
 
   refreshStaleTexts(scratch, staleTextIds, opts.renderEnvironment);
-  refreshStaleTables(scratch, variables, skipIds, opts.renderEnvironment);
+  refreshStaleTables(scratch, staleTableIds, variables, opts.renderEnvironment);
 
   const originalsMap = arrayToMap(elements);
   const changed = new Map<string, ExcalidrawElement>();

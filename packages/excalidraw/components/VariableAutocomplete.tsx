@@ -167,9 +167,6 @@ const closeAutocomplete = (textarea?: HTMLTextAreaElement) => {
  *
  * Meant for any text field the placeholders can be typed into (the on-canvas
  * text editor, a table cell editor…). Returns the function that detaches it.
- *
- * tables: wired after merge (the table cell editor calls this and
- * `getTextareaCaretAnchor` on its textarea)
  */
 export const attachVariableAutocomplete = (
   textarea: HTMLTextAreaElement,

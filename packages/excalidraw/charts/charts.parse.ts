@@ -172,3 +172,84 @@ export const tryParseSpreadsheet = (text: string): ParseSpreadsheetResult => {
 
   return tryParseCells(lines);
 };
+
+export type ParseTableResult =
+  | { ok: false; reason: string }
+  | { ok: true; cells: string[][]; delimiter: "\t" | "," | ";" };
+
+/**
+ * Splits delimited text into rows of cells. A quoted cell (what spreadsheets
+ * produce for cells holding the delimiter or a line break) may contain the
+ * delimiter and newlines, and `""` stands for a quote.
+ */
+const parseDelimitedText = (text: string, delimiter: string): string[][] => {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+  // a quote only opens a quoted cell at the very start of the cell
+  let cellStart = true;
+
+  const endCell = () => {
+    row.push(cell.trim());
+    cell = "";
+    cellStart = true;
+  };
+  const endRow = () => {
+    endCell();
+    rows.push(row);
+    row = [];
+  };
+
+  const source = text.replace(/\r\n?/g, "\n");
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (source[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cell += char;
+      }
+    } else if (char === '"' && cellStart) {
+      inQuotes = true;
+      cellStart = false;
+    } else if (char === delimiter) {
+      endCell();
+    } else if (char === "\n") {
+      endRow();
+    } else {
+      cell += char;
+      cellStart = cellStart && char === " ";
+    }
+  }
+  endRow();
+  return rows;
+};
+
+/**
+ * Parses a text grid (tab, comma or semicolon separated) for pasting as a
+ * table. Unlike `tryParseSpreadsheet` it doesn't need numbers: any grid with
+ * at least two columns and the same column count on every row is valid.
+ */
+export const tryParseTable = (text: string): ParseTableResult => {
+  for (const delimiter of ["\t", ",", ";"] as const) {
+    const rows = parseDelimitedText(text, delimiter);
+    // trailing empty lines are not rows
+    while (
+      rows.length > 0 &&
+      rows[rows.length - 1].every((cell) => cell === "")
+    ) {
+      rows.pop();
+    }
+    const numCols = rows[0]?.length ?? 0;
+    if (numCols > 1 && rows.every((row) => row.length === numCols)) {
+      return { ok: true, cells: rows, delimiter };
+    }
+  }
+  return { ok: false, reason: "Not a table" };
+};

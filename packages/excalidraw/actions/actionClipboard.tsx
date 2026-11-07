@@ -1,5 +1,8 @@
-import { isTextElement } from "@excalidraw/element";
-import { getTextFromElements } from "@excalidraw/element";
+import {
+  getTextFromElements,
+  isTableElement,
+  isTextElement,
+} from "@excalidraw/element";
 
 import { CODES, KEYS, isFirefox } from "@excalidraw/common";
 
@@ -273,7 +276,13 @@ export const copyText = register({
     });
 
     try {
-      copyTextToSystemClipboard(getTextFromElements(selectedElements));
+      copyTextToSystemClipboard(
+        getTextFromElements(
+          selectedElements,
+          undefined,
+          app.scene.getVariables().map,
+        ),
+      );
     } catch (e) {
       throw new Error(t("errors.copyToSystemClipboardFailed"));
     }
@@ -289,7 +298,7 @@ export const copyText = register({
           selectedElementIds: appState.selectedElementIds,
           includeBoundTextElement: true,
         })
-        .some(isTextElement)
+        .some((element) => isTextElement(element) || isTableElement(element))
     );
   },
   keywords: ["text", "clipboard", "copy"],

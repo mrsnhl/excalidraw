@@ -14,6 +14,7 @@ import {
 
 import { pointFrom, pointRotateRads, type Radians } from "@excalidraw/math";
 
+import type { VariableMap } from "@excalidraw/common";
 import type { ExtractSetType } from "@excalidraw/common/utility-types";
 
 import {
@@ -24,6 +25,7 @@ import { LinearElementEditor } from "./linearElementEditor";
 import { getPositionAfterHeightChange } from "./sizeHelpers";
 
 import { updateStickyNoteLayout } from "./stickyNote";
+import { getTableAsTSV } from "./table";
 import { measureText } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
 
@@ -31,6 +33,7 @@ import {
   isBoundToContainer,
   isArrowElement,
   isStickyNoteElement,
+  isTableElement,
   isTextElement,
 } from "./typeChecks";
 import { getResolvedOriginalText } from "./variables";
@@ -493,6 +496,9 @@ export const shouldAllowVerticalAlign = (
   elementsMap: ElementsMap,
 ) => {
   return selectedElements.some((element) => {
+    if (isTableElement(element)) {
+      return true;
+    }
     if (isBoundToContainer(element)) {
       const container = getContainerElement(element, elementsMap);
       if (isArrowElement(container)) {
@@ -517,7 +523,7 @@ export const suppportsHorizontalAlign = (
       return true;
     }
 
-    return isTextElement(element);
+    return isTextElement(element) || isTableElement(element);
   });
 };
 
@@ -614,15 +620,21 @@ export const getBoundTextMaxHeight = (
   return height - BOUND_TEXT_PADDING * 2;
 };
 
-/** retrieves text from text elements and concatenates to a single string */
+/**
+ * retrieves text from text elements (and tables, as TSV) and concatenates to
+ * a single string
+ */
 export const getTextFromElements = (
   elements: readonly ExcalidrawElement[],
   separator = "\n\n",
+  variables?: VariableMap | null,
 ) => {
   const text = elements
     .reduce((acc: string[], element) => {
       if (isTextElement(element)) {
         acc.push(element.text);
+      } else if (isTableElement(element)) {
+        acc.push(getTableAsTSV(element, variables));
       }
       return acc;
     }, [])

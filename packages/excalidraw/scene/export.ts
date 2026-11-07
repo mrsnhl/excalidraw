@@ -15,6 +15,7 @@ import {
   toBrandedType,
   applyDarkModeFilter,
   removeDarkModeFilter,
+  type VariableMap,
 } from "@excalidraw/common";
 
 import { getCommonBounds, getElementAbsoluteCoords } from "@excalidraw/element";
@@ -358,6 +359,12 @@ type ExportSceneBaseConfig = {
    * @default { name: true, outline: true, clip: true }
    */
   frames?: { name?: boolean; outline?: boolean; clip?: boolean };
+  /**
+   * Scene variables that `{{name}}` placeholders in table cells resolve to.
+   *
+   * @default empty (placeholders are exported as written)
+   */
+  variables?: VariableMap;
 };
 
 /**
@@ -681,7 +688,7 @@ const configExportDimension = async ({
   if (cfg.environment?.loadFonts) {
     await cfg.environment.loadFonts();
   } else {
-    await Fonts.loadElementsFonts(elements);
+    await Fonts.loadElementsFonts(elements, undefined, cfg.variables);
   }
 
   // value used to scale the canvas context. By default, we use this to
@@ -934,6 +941,8 @@ const exportToCanvas = async ({
       elementsPendingErasure: new Set(),
       pendingFlowchartNodes: null,
       theme,
+      variables: cfg.variables ?? new Map(),
+      variablesVersion: "",
     },
   });
 
@@ -953,6 +962,7 @@ type ExportToSvgConfig = Pick<
   | "scale"
   | "frames"
   | "environment"
+  | "variables"
 > &
   ExportSizeConfig & {
     /**
@@ -1122,7 +1132,7 @@ const exportToSvg = async ({
 
   const fontFaces =
     config?.skipInliningFonts !== true
-      ? await Fonts.generateFontFaceDeclarations(elements)
+      ? await Fonts.generateFontFaceDeclarations(elements, config?.variables)
       : [];
 
   const delimiter = "\n      "; // 6 spaces
@@ -1194,6 +1204,7 @@ const exportToSvg = async ({
         : new Map(),
       reuseImages: config?.reuseImages ?? true,
       theme,
+      variables: cfg.variables,
     },
   );
 

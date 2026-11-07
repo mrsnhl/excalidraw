@@ -111,6 +111,7 @@ import {
   newEmbeddableElement,
   newMagicFrameElement,
   newStickyNoteElement,
+  newTableElement,
   newIframeElement,
   newArrowElement,
   newElement,
@@ -139,6 +140,7 @@ import {
   isTextElement,
   isVariableElement,
   isStickyNoteElement,
+  isTableElement,
   getNormalizedDimensions,
   isElementCompletelyInViewport,
   isElementInViewport,
@@ -283,6 +285,13 @@ import {
   actionToggleArrowBinding,
   actionToggleMidpointSnapping,
   actionToggleCropEditor,
+  actionTableInsertRowAbove,
+  actionTableInsertRowBelow,
+  actionTableInsertColumnLeft,
+  actionTableInsertColumnRight,
+  actionTableDeleteRow,
+  actionTableDeleteColumn,
+  actionToggleTableHeaderRow,
 } from "../actions";
 import { actionWrapTextInContainer } from "../actions/actionBoundText";
 import { actionPaste } from "../actions/actionClipboard";
@@ -364,6 +373,7 @@ import {
   getViewportForZoomWithScrollConstraints,
 } from "../viewport";
 import { ElementCanvasButtons } from "../components/ElementCanvasButtons";
+
 import { LaserTrails } from "../laserTrails";
 import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { isOverScrollBars } from "../scene/scrollbars";
@@ -375,6 +385,8 @@ import {
   getColorTargetAppStateUpdates,
   resolveColorTarget,
 } from "../actions/colorTargets";
+
+import { TableLineActions } from "./TableLineActions";
 
 import ConvertElementTypePopup, {
   getConversionTypeFromElements,
@@ -404,6 +416,7 @@ import {
   selectGroupsForSelectedElements,
 } from "./App.selection";
 import { AppSelectionTool } from "./App.selectionTool";
+import { AppTable } from "./App.table";
 import { AppWrap } from "./App.wrap";
 import BraveMeasureTextError from "./BraveMeasureTextError";
 import { ContextMenu, CONTEXT_MENU_SEPARATOR } from "./ContextMenu";
@@ -711,6 +724,9 @@ class App extends React.Component<AppProps, AppState> {
   public selection: AppSelection = new AppSelection(this);
   public selectionTool: AppSelectionTool = new AppSelectionTool(this);
   public wrap: AppWrap = new AppWrap(this);
+  public table: AppTable = new AppTable(this, {
+    getContainer: () => this.excalidrawContainerRef.current,
+  });
 
   bindModeHandler: ReturnType<typeof setTimeout> | null = null;
 
@@ -2560,6 +2576,13 @@ class App extends React.Component<AppProps, AppState> {
                                 />
                               </ElementCanvasButtons>
                             )}
+                          {selectedElements.length === 1 &&
+                            isTableElement(firstSelectedElement) &&
+                            !firstSelectedElement.locked && (
+                              <TableLineActions
+                                element={firstSelectedElement}
+                              />
+                            )}
                           {this.isDefaultUIEnabled() &&
                             selectedElements.length === 1 &&
                             isIframeElement(firstSelectedElement) &&
@@ -2664,6 +2687,13 @@ class App extends React.Component<AppProps, AppState> {
                               pendingFlowchartNodes:
                                 this.flowchart.pendingNodes,
                               theme: this.state.theme,
+                              variables: this.scene.getVariables().map,
+                              variablesVersion:
+                                this.scene.getVariables().version,
+                              editingTableCell: this.state.activeTableCell
+                                ?.editing
+                                ? this.state.activeTableCell
+                                : null,
                               ...this.getRenderOverrideConfig(),
                             }}
                           />
@@ -2689,6 +2719,9 @@ class App extends React.Component<AppProps, AppState> {
                                   this.elementsPendingErasure,
                                 pendingFlowchartNodes: null,
                                 theme: this.state.theme,
+                                variables: this.scene.getVariables().map,
+                                variablesVersion:
+                                  this.scene.getVariables().version,
                                 ...this.getRenderOverrideConfig(),
                               }}
                               // a tool dragged out of the toolbar previews
@@ -4333,6 +4366,7 @@ class App extends React.Component<AppProps, AppState> {
 
     this.handleInteractionStateChange(prevProps, prevState);
     this.handleForcedToolChange(prevProps, prevState);
+    this.table.sync();
     this.host.sync(prevProps);
 
     this.appStateObserver.flush(prevState);
@@ -5199,6 +5233,10 @@ class App extends React.Component<AppProps, AppState> {
           this.state.croppingElementId
         ) {
           this.finishImageCropping();
+          return;
+        }
+
+        if (this.table.handleKeyDown(event)) {
           return;
         }
 
@@ -6285,6 +6323,13 @@ class App extends React.Component<AppProps, AppState> {
       this.state,
     );
 
+    if (
+      this.state.activeTool.type === this.state.preferredSelectionTool.type &&
+      this.table.handleDoubleClick({ x: sceneX, y: sceneY })
+    ) {
+      return;
+    }
+
     if (selectedElements.length === 1 && isLinearElement(selectedElements[0])) {
       const selectedLinearElement: ExcalidrawLinearElement =
         selectedElements[0];
@@ -6942,6 +6987,10 @@ class App extends React.Component<AppProps, AppState> {
       },
       isOverScrollBar,
     );
+
+    if (!isOverScrollBar) {
+      this.table.updateHover(scenePointer);
+    }
 
     const textToolTarget = this.textTool.updateHover(
       scenePointer,
@@ -7825,6 +7874,10 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     if (this.handleDraggingScrollBar(event, pointerDownState)) {
+      return;
+    }
+
+    if (this.table.handlePointerDown(event, pointerDownState)) {
       return;
     }
 
@@ -8821,6 +8874,7 @@ class App extends React.Component<AppProps, AppState> {
       | "selection"
       | "rectangle"
       | "stickynote"
+      | "table"
       | "diamond"
       | "ellipse"
       | "iframe"
@@ -8843,7 +8897,11 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   private createGenericElementOnPointerDown = (
-    elementType: ExcalidrawGenericElement["type"] | "embeddable" | "stickynote",
+    elementType:
+      | ExcalidrawGenericElement["type"]
+      | "embeddable"
+      | "stickynote"
+      | "table",
     pointerDownState: PointerDownState,
   ): void => {
     const [gridX, gridY] = getGridPoint(
@@ -8889,6 +8947,11 @@ class App extends React.Component<AppProps, AppState> {
     } else if (elementType === "stickynote") {
       element = newStickyNoteElement({
         type: "stickynote",
+        ...baseElementAttributes,
+      });
+    } else if (elementType === "table") {
+      element = newTableElement({
+        type: "table",
         ...baseElementAttributes,
       });
     } else {
@@ -9978,6 +10041,68 @@ class App extends React.Component<AppProps, AppState> {
           sceneY: newElement.y + newElement.height / 2,
           container: newElement,
         });
+        return;
+      }
+
+      if (newElement && isTableElement(newElement)) {
+        // a gesture under the drag threshold is a click: the default grid,
+        // centered on the pointer. A drag keeps the size it was dragged to
+        const zoom = this.state.zoom.value;
+        const isClick =
+          newElement.width * zoom < DRAGGING_THRESHOLD &&
+          newElement.height * zoom < DRAGGING_THRESHOLD;
+        if (isClick) {
+          const grid = newTableElement({
+            type: "table",
+            x: 0,
+            y: 0,
+            rows: newElement.cells.length,
+            columns: newElement.columnWidths.length,
+          });
+          const [x, y] = getGridPoint(
+            pointerDownState.origin.x - grid.width / 2,
+            pointerDownState.origin.y - grid.height / 2,
+            childEvent[KEYS.CTRL_OR_CMD] ? null : this.getEffectiveGridSize(),
+          );
+          this.scene.mutateElement(
+            newElement,
+            {
+              x,
+              y,
+              width: grid.width,
+              height: grid.height,
+              columnWidths: grid.columnWidths,
+              rowBaseHeights: grid.rowBaseHeights,
+              rowHeights: grid.rowHeights,
+            },
+            { informMutation: false, isDragging: false },
+          );
+        }
+
+        this.store.scheduleCapture();
+        this.scene.triggerUpdate();
+
+        if (activeTool.locked) {
+          this.setState((prevState) => ({
+            newElement: null,
+            selectedElementIds: makeNextSelectedElementIds({}, prevState),
+          }));
+          this.cursor.applyForTool();
+          return;
+        }
+
+        this.cursor.reset();
+        this.setState((prevState) => ({
+          newElement: null,
+          selectedElementIds: makeNextSelectedElementIds(
+            { [newElement.id]: true },
+            prevState,
+          ),
+          activeTool: updateActiveTool(this.state, {
+            type: this.state.preferredSelectionTool.type,
+          }),
+        }));
+        this.table.startCellEditing(newElement, 0, 0);
         return;
       }
 
@@ -11112,6 +11237,9 @@ class App extends React.Component<AppProps, AppState> {
       // (locked ones too, for the menu to offer unlocking them)
       this.selection.select(element, { includeLocked: true });
     }
+    if (element) {
+      this.table.prepareContextMenu(element, { x, y });
+    }
     this.setState(
       {
         showHyperlinkPopup: false,
@@ -11337,6 +11465,14 @@ class App extends React.Component<AppProps, AppState> {
       CONTEXT_MENU_SEPARATOR,
       actionAddToLibrary,
       ...zIndexActions,
+      CONTEXT_MENU_SEPARATOR,
+      actionToggleTableHeaderRow,
+      actionTableInsertRowAbove,
+      actionTableInsertRowBelow,
+      actionTableInsertColumnLeft,
+      actionTableInsertColumnRight,
+      actionTableDeleteRow,
+      actionTableDeleteColumn,
       CONTEXT_MENU_SEPARATOR,
       actionFlipHorizontal,
       actionFlipVertical,

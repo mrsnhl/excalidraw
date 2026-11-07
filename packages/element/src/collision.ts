@@ -542,6 +542,7 @@ export const intersectElementWithLineSegment = (
       return [];
     case "rectangle":
     case "stickynote":
+    case "table":
     case "image":
     case "text":
     case "iframe":

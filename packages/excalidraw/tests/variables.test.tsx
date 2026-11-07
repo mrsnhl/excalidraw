@@ -8,6 +8,7 @@ import {
 
 import type {
   ExcalidrawElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   NonDeleted,
 } from "@excalidraw/element/types";
@@ -48,6 +49,11 @@ const getText = (element: ExcalidrawElement) =>
   API.getElement(
     element as ExcalidrawTextElement,
   ) as NonDeleted<ExcalidrawTextElement>;
+
+const getTable = (element: ExcalidrawElement) =>
+  API.getElement(
+    element as ExcalidrawTableElement,
+  ) as NonDeleted<ExcalidrawTableElement>;
 
 const createVariable = (name: string, value: string) =>
   API.createElement({ type: "variable", name, value });
@@ -580,6 +586,126 @@ describe("scene variables", () => {
       expect(
         getUnknownVariableHighlights([getText(text)], null, ...args),
       ).toEqual([]);
+      expect(getUnknownVariableHighlights([], null, ...args)).toEqual([]);
+    });
+  });
+  describe("tables", () => {
+    const createTable = (cells: string[][]) =>
+      API.createElement({
+        type: "table",
+        x: 100,
+        y: 100,
+        rows: cells.length,
+        columns: cells[0].length,
+        cells,
+      });
+
+    it("grows the row when a value in a cell gets longer", () => {
+      const variable = createVariable("v", "x");
+      const table = createTable([["{{v}}", "b"]]);
+      setScene([variable, table]);
+      const { rowHeights, height } = getTable(table);
+
+      run(actionUpdateVariable, {
+        id: variable.id,
+        value: "long value ".repeat(20).trim(),
+      });
+
+      expect(getTable(table).rowHeights[0]).toBeGreaterThan(rowHeights[0]);
+      expect(getTable(table).height).toBeGreaterThan(height);
+      expect(getTable(table).cells[0][0]).toBe("{{v}}");
+    });
+
+    it("rewrites the cells on rename, and inlines them on delete", () => {
+      run(actionCreateVariable, { name: "price", value: "$12" });
+      const table = createTable([["{{price}}", "{{ price }} each"]]);
+      API.updateScene({
+        elements: [...h.elements, table],
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+
+      run(actionRenameVariable, { id: getVariable("price")!.id, name: "cost" });
+      expect(getTable(table).cells[0]).toEqual(["{{cost}}", "{{cost}} each"]);
+
+      run(actionDeleteVariable, {
+        id: getVariable("cost")!.id,
+        mode: "inline",
+      });
+      expect(getTable(table).cells[0]).toEqual(["$12", "$12 each"]);
+    });
+
+    it("counts a table as one use", async () => {
+      setScene([
+        createVariable("price", "$12"),
+        createTable([["{{price}}", "{{price}}"]]),
+        API.createElement({ type: "text", text: "{{price}}" }),
+      ]);
+      run(actionToggleVariablesMenu);
+      await screen.findByTestId("variables-menu");
+
+      expect(
+        within(screen.getByTestId("variable-row-price")).getByText("2 uses"),
+      ).toBeTruthy();
+    });
+
+    it("suggests the variables in a cell, and Tab picks instead of moving", async () => {
+      run(actionCreateVariable, { name: "price", value: "$12" });
+      const table = createTable([["", ""]]);
+      API.updateScene({
+        elements: [...h.elements, table],
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+      act(() => {
+        h.app.table.startCellEditing(getTable(table), 0, 0);
+      });
+      const editor = await waitFor(() => {
+        const el = document.querySelector<HTMLTextAreaElement>(
+          ".excalidraw-table-cell-wysiwyg",
+        );
+        expect(el).not.toBeNull();
+        return el!;
+      });
+
+      editor.focus();
+      updateTextEditor(editor, "{{pr");
+      editor.setSelectionRange(4, 4);
+      fireEvent.keyUp(editor, { key: "r" });
+      expect(
+        await screen.findByTestId("variable-autocomplete-item-price"),
+      ).toBeTruthy();
+
+      fireEvent.keyDown(editor, { key: "Tab" });
+      expect(editor.value).toBe("{{price}}");
+      expect(h.state.activeTableCell).toMatchObject({ row: 0, col: 0 });
+      await waitFor(() =>
+        expect(screen.queryByTestId("variable-autocomplete")).toBeNull(),
+      );
+    });
+
+    it("highlights the unknown names of a selected table, but not of the edited cell", () => {
+      const table = createTable([["{{ghost}}", "{{known}} {{other}}"]]);
+      setScene([createVariable("known", "1"), table]);
+      const args = [
+        h.app.scene.getVariables().map,
+        h.app.scene.getNonDeletedElementsMap(),
+        h.app.renderEnvironment,
+      ] as const;
+      const names = (
+        highlights: ReturnType<typeof getUnknownVariableHighlights>,
+      ) => highlights.flatMap(({ rects }) => rects.map(({ name }) => name));
+
+      expect(
+        names(getUnknownVariableHighlights([getTable(table)], null, ...args)),
+      ).toEqual(["ghost", "other"]);
+      expect(
+        names(
+          getUnknownVariableHighlights([getTable(table)], null, ...args, {
+            elementId: table.id,
+            row: 0,
+            col: 0,
+          }),
+        ),
+      ).toEqual(["other"]);
       expect(getUnknownVariableHighlights([], null, ...args)).toEqual([]);
     });
   });

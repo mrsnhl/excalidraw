@@ -274,6 +274,8 @@ const getRelevantAppStateProps = (
   snapLines: appState.snapLines,
   zenModeEnabled: appState.zenModeEnabled,
   editingTextElement: appState.editingTextElement,
+  activeTableCell: appState.activeTableCell,
+  hoveredTableControl: appState.hoveredTableControl,
   isCropping: appState.isCropping,
   croppingElementId: appState.croppingElementId,
   searchMatches: appState.searchMatches,

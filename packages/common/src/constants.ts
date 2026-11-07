@@ -422,6 +422,18 @@ export const VERSIONS = {
 } as const;
 
 export const BOUND_TEXT_PADDING = 5;
+
+export const TABLE_CELL_PADDING = BOUND_TEXT_PADDING;
+export const DEFAULT_TABLE_ROWS = 3;
+export const DEFAULT_TABLE_COLUMNS = 3;
+export const DEFAULT_TABLE_COLUMN_WIDTH = 120;
+export const DEFAULT_TABLE_ROW_HEIGHT = 36;
+export const MIN_TABLE_COLUMN_WIDTH = 30;
+export const MIN_TABLE_ROW_HEIGHT = 20;
+/** upper bound for auto-sized column widths (e.g. when pasting a table) */
+export const MAX_TABLE_AUTO_COLUMN_WIDTH = 320;
+/** opacity of the header row shade (relative to the stroke color) */
+export const TABLE_HEADER_FILL_OPACITY = 0.08;
 export const ARROW_LABEL_WIDTH_FRACTION = 0.7;
 export const ARROW_LABEL_FONT_SIZE_TO_MIN_WIDTH_RATIO = 11;
 
@@ -566,6 +578,7 @@ export const TOOL_TYPE = {
   frame: "frame",
   magicframe: "magicframe",
   stickynote: "stickynote",
+  table: "table",
   embeddable: "embeddable",
   laser: "laser",
   autoshape: "autoshape",

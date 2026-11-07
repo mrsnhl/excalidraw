@@ -56,6 +56,7 @@ import {
   newTextElement,
   type ElementConstructorOpts,
   newStickyNoteElement,
+  newTableElement,
   normalizeStickyNoteGeometry,
 } from "./newElement";
 import { normalizeStickyNoteStrokeColor } from "./stickyNote";
@@ -109,6 +110,7 @@ import type {
   TextAlign,
   VerticalAlign,
   ExcalidrawStickyNoteElement,
+  ExcalidrawTableElement,
 } from "./types";
 
 /**
@@ -245,6 +247,27 @@ export type ValidStickyNote = {
 } & ElementConstructorOpts &
   Partial<Pick<ExcalidrawStickyNoteElement, "baseHeight">>;
 
+/** A table: `cells` sets the grid size, otherwise `rows` x `columns` empty cells. */
+export type ValidTable = {
+  type: "table";
+  id?: ExcalidrawTableElement["id"];
+  rows?: number;
+  columns?: number;
+} & ElementConstructorOpts &
+  Partial<
+    Pick<
+      ExcalidrawTableElement,
+      | "cells"
+      | "columnWidths"
+      | "rowBaseHeights"
+      | "fontSize"
+      | "fontFamily"
+      | "textAlign"
+      | "verticalAlign"
+      | "headerRow"
+    >
+  >;
+
 export type ExcalidrawElementSkeleton =
   | Extract<
       Exclude<ExcalidrawElement, ExcalidrawSelectionElement>,
@@ -257,6 +280,7 @@ export type ExcalidrawElementSkeleton =
     } & Partial<ExcalidrawLinearElement>)
   | ValidContainer
   | ValidStickyNote
+  | ValidTable
   | ValidLinearElement
   | ({
       type: "text";
@@ -836,6 +860,10 @@ export const convertToExcalidrawElements = (
             baseHeight: element.baseHeight ?? height,
           }),
         );
+        break;
+      }
+      case "table": {
+        excalidrawElement = newTableElement({ ...element, type: "table" });
         break;
       }
       case "embeddable": {

@@ -1,4 +1,8 @@
-import type { UserIdleState, EditorInterface } from "@excalidraw/common";
+import type {
+  UserIdleState,
+  EditorInterface,
+  VariableMap,
+} from "@excalidraw/common";
 import type {
   ExcalidrawElement,
   ExcalidrawFrameLikeElement,
@@ -59,6 +63,12 @@ export type StaticCanvasRenderConfig = {
   pendingFlowchartNodes: PendingExcalidrawElements | null;
   theme: AppState["theme"];
   elementRenderOverrides?: ElementRenderOverrides;
+  /** scene variables, `{{name}}` placeholders in table cells resolve to these */
+  variables?: VariableMap;
+  /** changes whenever `variables` does, invalidates cached table bitmaps */
+  variablesVersion?: string;
+  /** the table cell being edited in place, its text is drawn by the editor */
+  editingTableCell?: { elementId: string; row: number; col: number } | null;
 };
 
 export type SVGRenderConfig = {
@@ -84,6 +94,8 @@ export type SVGRenderConfig = {
    */
   reuseImages: boolean;
   theme: AppState["theme"];
+  /** scene variables, `{{name}}` placeholders in table cells resolve to these */
+  variables?: VariableMap;
 };
 
 export type InteractiveCanvasRenderConfig = {
@@ -196,6 +208,7 @@ export type ElementShapes = {
   line: Drawable[];
   text: null;
   stickynote: null;
+  table: Drawable[];
   image: null;
   frame: null;
   magicframe: null;

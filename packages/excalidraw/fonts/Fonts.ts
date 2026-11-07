@@ -6,6 +6,7 @@ import {
   WINDOWS_EMOJI_FALLBACK_FONT,
   getFontFamilyFallbacks,
   FONT_SIZES,
+  resolveVariables,
 } from "@excalidraw/common";
 import { getContainerElement } from "@excalidraw/element";
 import { charWidth } from "@excalidraw/element";
@@ -21,13 +22,18 @@ import {
 
 import { ShapeCache } from "@excalidraw/element";
 
-import { isTextElement } from "@excalidraw/element";
+import {
+  invalidateTableLayouts,
+  isTableElement,
+  isTextElement,
+} from "@excalidraw/element";
 
 import type {
   ExcalidrawElement,
   ExcalidrawTextElement,
 } from "@excalidraw/element/types";
 
+import type { VariableMap } from "@excalidraw/common";
 import type { ValueOf } from "@excalidraw/common/utility-types";
 
 import type { Scene } from "@excalidraw/element";
@@ -139,7 +145,12 @@ export class Fonts {
     const elementsMap = this.scene.getNonDeletedElementsMap();
 
     for (const element of this.scene.getNonDeletedElements()) {
-      if (isTextElement(element)) {
+      if (isTableElement(element)) {
+        didUpdate = true;
+        // the layout (and with it the shape) was measured with the fallback
+        charWidth.clearCache(getFontString(element));
+        ShapeCache.delete(element);
+      } else if (isTextElement(element)) {
         didUpdate = true;
         ShapeCache.delete(element);
 
@@ -154,6 +165,7 @@ export class Fonts {
     }
 
     if (didUpdate) {
+      invalidateTableLayouts();
       this.scene.triggerUpdate();
     }
   };
@@ -166,7 +178,10 @@ export class Fonts {
   ): Promise<FontFace[]> => {
     const elements = this.scene.getNonDeletedElements();
     const sceneFamilies = Fonts.getUniqueFamilies(elements);
-    const charsPerFamily = Fonts.getCharsPerFamily(elements);
+    const charsPerFamily = Fonts.getCharsPerFamily(
+      elements,
+      this.scene.getVariables().map,
+    );
 
     // prewarm the default font so that the first text element is not
     // rendered with a fallback font
@@ -194,6 +209,7 @@ export class Fonts {
   public static loadElementsFonts = async (
     elements: readonly ExcalidrawElement[],
     ownerDocument?: Document,
+    variables?: VariableMap,
   ): Promise<FontFace[]> => {
     const fontFaceSet =
       (ownerDocument ?? (typeof document !== "undefined" ? document : null))
@@ -218,7 +234,7 @@ export class Fonts {
       return [];
     }
 
-    const charsPerFamily = Fonts.getCharsPerFamily(elements);
+    const charsPerFamily = Fonts.getCharsPerFamily(elements, variables);
 
     return Fonts.loadFontFaces(fontFamilies, charsPerFamily, fontFaceSet);
   };
@@ -228,9 +244,10 @@ export class Fonts {
    */
   public static async generateFontFaceDeclarations(
     elements: readonly ExcalidrawElement[],
+    variables?: VariableMap,
   ) {
     const families = Fonts.getUniqueFamilies(elements);
-    const charsPerFamily = Fonts.getCharsPerFamily(elements);
+    const charsPerFamily = Fonts.getCharsPerFamily(elements, variables);
 
     // for simplicity, assuming we have just one family with the CJK handdrawn fallback
     const familyWithCJK = families.find((x) =>
@@ -470,7 +487,7 @@ export class Fonts {
   ): Array<ExcalidrawTextElement["fontFamily"]> {
     return Array.from(
       elements.reduce((families, element) => {
-        if (isTextElement(element)) {
+        if (isTextElement(element) || isTableElement(element)) {
           families.add(element.fontFamily);
         }
         return families;
@@ -483,23 +500,35 @@ export class Fonts {
    */
   private static getCharsPerFamily(
     elements: ReadonlyArray<ExcalidrawElement>,
+    variables?: VariableMap,
   ): Record<number, Set<string>> {
     const charsPerFamily: Record<number, Set<string>> = {};
 
-    for (const element of elements) {
-      if (!isTextElement(element)) {
-        continue;
-      }
-
-      // gather unique codepoints only when inlining fonts. `text` is the
-      // displayed one (with its `{{variables}}` resolved), `originalText` the
-      // one the editor shows
-      for (const char of element.originalText + element.text) {
-        if (!charsPerFamily[element.fontFamily]) {
-          charsPerFamily[element.fontFamily] = new Set();
+    const addChars = (family: number, text: string) => {
+      // gather unique codepoints only when inlining fonts
+      for (const char of text) {
+        if (!charsPerFamily[family]) {
+          charsPerFamily[family] = new Set();
         }
 
-        charsPerFamily[element.fontFamily].add(char);
+        charsPerFamily[family].add(char);
+      }
+    };
+
+    for (const element of elements) {
+      if (isTextElement(element)) {
+        // `text` is the displayed one (with its `{{variables}}` resolved),
+        // `originalText` the one the editor shows
+        addChars(element.fontFamily, element.originalText + element.text);
+      } else if (isTableElement(element)) {
+        // cells are rendered with their variables resolved, but the raw
+        // text is what is shown while editing
+        for (const row of element.cells) {
+          for (const cell of row) {
+            addChars(element.fontFamily, cell);
+            addChars(element.fontFamily, resolveVariables(cell, variables));
+          }
+        }
       }
     }
 

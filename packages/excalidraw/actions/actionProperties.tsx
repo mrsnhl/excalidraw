@@ -59,9 +59,12 @@ import {
   isLinearElement,
   isLineElement,
   isStickyNoteElement,
+  isTableElement,
   isTextElement,
   isUsingAdaptiveRadius,
 } from "@excalidraw/element";
+
+import { getTableUpdate } from "@excalidraw/element";
 
 import {
   getColorTargetElement,
@@ -88,6 +91,7 @@ import type {
   ExcalidrawElement,
   ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   FontFamilyValues,
   StrokeVariability,
@@ -292,11 +296,22 @@ const offsetElementAfterFontResize = (
   });
 };
 
+/** font size as picked by the user (tables carry theirs directly) */
+const getPickedFontSize = (
+  element: ExcalidrawTextElement | ExcalidrawTableElement,
+  elementsMap: ElementsMap,
+) =>
+  isTableElement(element)
+    ? element.fontSize
+    : getBaseFontSize(element, elementsMap);
+
 const changeFontSize = (
   elements: readonly ExcalidrawElement[],
   appState: AppState,
   app: AppClassProperties,
-  getNewFontSize: (element: ExcalidrawTextElement) => number,
+  getNewFontSize: (
+    element: ExcalidrawTextElement | ExcalidrawTableElement,
+  ) => number,
   fallbackValue?: ExcalidrawTextElement["fontSize"],
 ) => {
   const newFontSizes = new Set<number>();
@@ -306,6 +321,19 @@ const changeFontSize = (
     elements,
     appState,
     (oldElement) => {
+      if (isTableElement(oldElement)) {
+        const newFontSize = getNewFontSize(oldElement);
+        newFontSizes.add(newFontSize);
+        return newElementWith(
+          oldElement,
+          getTableUpdate(
+            oldElement,
+            { fontSize: newFontSize },
+            app.scene.getVariables().map,
+            app.renderEnvironment,
+          ),
+        );
+      }
       if (isTextElement(oldElement)) {
         const newFontSize = getNewFontSize(oldElement);
         newFontSizes.add(newFontSize);
@@ -1061,6 +1089,9 @@ export const actionChangeFontSize = register<ExcalidrawTextElement["fontSize"]>(
                 app,
                 (element) => {
                   const elementsMap = app.scene.getNonDeletedElementsMap();
+                  if (isTableElement(element)) {
+                    return element.fontSize;
+                  }
                   if (isTextElement(element)) {
                     return getBaseFontSize(element, elementsMap);
                   }
@@ -1075,6 +1106,7 @@ export const actionChangeFontSize = register<ExcalidrawTextElement["fontSize"]>(
                 },
                 (element) =>
                   isTextElement(element) ||
+                  isTableElement(element) ||
                   getBoundTextElement(
                     element,
                     app.scene.getNonDeletedElementsMap(),
@@ -1111,7 +1143,7 @@ export const actionDecreaseFontSize = register({
         // get previous value before relative increase (doesn't work fully
         // due to rounding and float precision issues)
         (1 / (1 + FONT_SIZE_RELATIVE_INCREASE_STEP)) *
-          getBaseFontSize(element, app.scene.getNonDeletedElementsMap()),
+          getPickedFontSize(element, app.scene.getNonDeletedElementsMap()),
       ),
     );
   },
@@ -1133,7 +1165,7 @@ export const actionIncreaseFontSize = register({
   perform: (elements, appState, value, app) => {
     return changeFontSize(elements, appState, app, (element) =>
       Math.round(
-        getBaseFontSize(element, app.scene.getNonDeletedElementsMap()) *
+        getPickedFontSize(element, app.scene.getNonDeletedElementsMap()) *
           (1 + FONT_SIZE_RELATIVE_INCREASE_STEP),
       ),
     );
@@ -1260,6 +1292,7 @@ export const actionChangeFontFamily = register<{
         ExcalidrawTextElement,
         ExcalidrawElement | null
       >();
+      const tablesToRefresh = new Set<ExcalidrawTableElement["id"]>();
       let uniqueChars = new Set<string>();
       let skipFontFaceCheck = false;
 
@@ -1284,6 +1317,23 @@ export const actionChangeFontFamily = register<{
           elements,
           appState,
           (oldElement) => {
+            if (
+              isTableElement(oldElement) &&
+              (oldElement.fontFamily !== nextFontFamily ||
+                currentItemFontFamily)
+            ) {
+              if (!skipFontFaceCheck) {
+                uniqueChars = new Set([
+                  ...uniqueChars,
+                  ...oldElement.cells.flat().join(""),
+                ]);
+              }
+              tablesToRefresh.add(oldElement.id);
+              return newElementWith(oldElement, {
+                fontFamily: nextFontFamily,
+                lineHeight: getLineHeight(nextFontFamily!),
+              });
+            }
             if (
               isTextElement(oldElement) &&
               (oldElement.fontFamily !== nextFontFamily ||
@@ -1332,8 +1382,28 @@ export const actionChangeFontFamily = register<{
       const chars = Array.from(uniqueChars.values()).join();
       const ownerDocument = app.props.ownerDocument ?? document;
 
+      // tables keep their grid in the element, so re-measure once the font is
+      // there (a failed lookup just keeps the fallback-font measurements)
+      const refreshTables = () => {
+        for (const id of tablesToRefresh) {
+          const table = app.scene.getElement(id);
+          if (table && isTableElement(table)) {
+            app.scene.mutateElement(
+              table,
+              getTableUpdate(
+                table,
+                {},
+                app.scene.getVariables().map,
+                app.renderEnvironment,
+              ),
+            );
+          }
+        }
+      };
+
       if (skipFontFaceCheck || ownerDocument.fonts.check(fontString, chars)) {
         // we either skip the check (have at least one font face loaded) or do the check and find out all the font faces have loaded
+        refreshTables();
         for (const [element, container] of elementContainerMapping) {
           // trigger synchronous redraw
           redrawTextBoundingBox(
@@ -1346,6 +1416,7 @@ export const actionChangeFontFamily = register<{
       } else {
         // otherwise try to load all font faces for the given chars and redraw elements once our font faces loaded
         ownerDocument.fonts.load(fontString, chars).then((fontFaces) => {
+          refreshTables();
           for (const [element, container] of elementContainerMapping) {
             // use latest element state to ensure we don't have closure over an old instance in order to avoid possible race conditions (i.e. font faces load out-of-order while rapidly switching fonts)
             const latestElement = app.scene.getElement(element.id);
@@ -1389,7 +1460,7 @@ export const actionChangeFontFamily = register<{
           elementsArray,
           app,
           (element) => {
-            if (isTextElement(element)) {
+            if (isTextElement(element) || isTableElement(element)) {
               return element.fontFamily;
             }
             const boundTextElement = getBoundTextElement(element, elementsMap);
@@ -1400,6 +1471,7 @@ export const actionChangeFontFamily = register<{
           },
           (element) =>
             isTextElement(element) ||
+            isTableElement(element) ||
             getBoundTextElement(element, elementsMap) !== null,
           (hasSelection) =>
             hasSelection
@@ -1568,6 +1640,9 @@ export const actionChangeTextAlign = register<TextAlign>({
         elements,
         appState,
         (oldElement) => {
+          if (isTableElement(oldElement)) {
+            return newElementWith(oldElement, { textAlign: value });
+          }
           if (isTextElement(oldElement)) {
             const newElement: ExcalidrawTextElement = newElementWith(
               oldElement,
@@ -1627,7 +1702,7 @@ export const actionChangeTextAlign = register<TextAlign>({
               elements,
               app,
               (element) => {
-                if (isTextElement(element)) {
+                if (isTextElement(element) || isTableElement(element)) {
                   return element.textAlign;
                 }
                 const boundTextElement = getBoundTextElement(
@@ -1641,6 +1716,7 @@ export const actionChangeTextAlign = register<TextAlign>({
               },
               (element) =>
                 isTextElement(element) ||
+                isTableElement(element) ||
                 getBoundTextElement(element, elementsMap) !== null,
               (hasSelection) =>
                 hasSelection ? null : appState.currentItemTextAlign,
@@ -1670,6 +1746,9 @@ export const actionChangeVerticalAlign = register<VerticalAlign>({
         elements,
         appState,
         (oldElement) => {
+          if (isTableElement(oldElement)) {
+            return newElementWith(oldElement, { verticalAlign: value });
+          }
           if (isTextElement(oldElement)) {
             const newElement: ExcalidrawTextElement = newElementWith(
               oldElement,
@@ -1726,6 +1805,9 @@ export const actionChangeVerticalAlign = register<VerticalAlign>({
               elements,
               app,
               (element) => {
+                if (isTableElement(element)) {
+                  return element.verticalAlign;
+                }
                 if (isTextElement(element) && element.containerId) {
                   return element.verticalAlign;
                 }
@@ -1740,6 +1822,7 @@ export const actionChangeVerticalAlign = register<VerticalAlign>({
               },
               (element) =>
                 isTextElement(element) ||
+                isTableElement(element) ||
                 getBoundTextElement(
                   element,
                   app.scene.getNonDeletedElementsMap(),

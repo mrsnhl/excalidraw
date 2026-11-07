@@ -4,6 +4,8 @@ import {
   getGridPoint,
   getFontString,
   DRAGGING_THRESHOLD,
+  MIN_TABLE_COLUMN_WIDTH,
+  MIN_TABLE_ROW_HEIGHT,
 } from "@excalidraw/common";
 
 import type {
@@ -26,10 +28,12 @@ import { getCommonBounds } from "./bounds";
 import { getPerfectElementSize } from "./sizeHelpers";
 import { getBoundTextElement } from "./textElement";
 import { getMinTextElementWidth } from "./textMeasurements";
+import { getTableColumnCount, getTableRowCount, splitTableSize } from "./table";
 import {
   isArrowElement,
   isElbowArrow,
   isFrameLikeElement,
+  isTableElement,
   isImageElement,
   isTextElement,
 } from "./typeChecks";
@@ -394,6 +398,18 @@ export const dragNewElement = ({
     return;
   }
 
+  if (isTableElement(newElement)) {
+    // a dragged table can't be smaller than its grid allows
+    width = Math.max(
+      width,
+      getTableColumnCount(newElement) * MIN_TABLE_COLUMN_WIDTH,
+    );
+    height = Math.max(
+      height,
+      getTableRowCount(newElement) * MIN_TABLE_ROW_HEIGHT,
+    );
+  }
+
   let newX = x < originX ? originX - width : originX;
   let newY = y < originY ? originY - height : originY;
 
@@ -413,6 +429,15 @@ export const dragNewElement = ({
       };
     }
 
+    // dragging a table spreads the new size evenly over its rows/columns
+    const tableGrid = isTableElement(newElement)
+      ? {
+          columnWidths: splitTableSize(width, getTableColumnCount(newElement)),
+          rowBaseHeights: splitTableSize(height, getTableRowCount(newElement)),
+          rowHeights: splitTableSize(height, getTableRowCount(newElement)),
+        }
+      : null;
+
     scene.mutateElement(
       newElement,
       {
@@ -421,6 +446,7 @@ export const dragNewElement = ({
         width,
         height,
         ...imageInitialDimension,
+        ...tableGrid,
       },
       { informMutation, isDragging: false },
     );

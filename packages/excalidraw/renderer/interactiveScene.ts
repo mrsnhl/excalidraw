@@ -41,6 +41,12 @@ import {
   isLinearElement,
   isLineElement,
   isTextElement,
+  isTableElement,
+  getTableControlGeometry,
+  getTableSpanRect,
+  isSameTableControl,
+  TABLE_INSERT_DOT_SIZE,
+  TABLE_INSERT_BUTTON_SIZE,
   getTextElementWithAccuratePosition,
   LinearElementEditor,
   maxBindingDistance_simple,
@@ -74,6 +80,7 @@ import type {
   ExcalidrawFrameLikeElement,
   ExcalidrawImageElement,
   ExcalidrawLinearElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   GroupId,
   NonDeleted,
@@ -1497,6 +1504,7 @@ const renderUnknownVariables = (
     app.scene.getVariables().map,
     elementsMap,
     app.renderEnvironment,
+    appState.activeTableCell?.editing ? appState.activeTableCell : null,
   );
   if (!highlights.length) {
     return;
@@ -1673,6 +1681,149 @@ const renderResetAutoResizeHandle = (
     autoResizeHandle.end[1] + appState.scrollY,
   );
   context.stroke();
+  context.restore();
+};
+
+const TABLE_CONTROL_COLORS = {
+  [THEME.LIGHT]: {
+    gripFill: "#f1f0ff",
+    gripBorder: "#d6d6d6",
+    dot: "#b8b8b8",
+    ring: "#ffffff",
+  },
+  [THEME.DARK]: {
+    gripFill: "#2e2d39",
+    gripBorder: "#d6d6d6",
+    dot: "#b8b8b8",
+    ring: "#232329",
+  },
+};
+
+/**
+ * The selected table's on-canvas controls: the active cell / row / column,
+ * the row and column grips and the insert handles at the line boundaries.
+ * Drawn in the table's local, rotated frame, sized in screen pixels.
+ */
+const renderTableControls = (
+  context: CanvasRenderingContext2D,
+  appState: InteractiveCanvasAppState,
+  table: ExcalidrawTableElement,
+  selectionColor: InteractiveCanvasRenderConfig["selectionColor"],
+) => {
+  const zoom = appState.zoom.value;
+  const px = 1 / zoom;
+  const colors = TABLE_CONTROL_COLORS[appState.theme];
+  const active =
+    appState.activeTableCell?.elementId === table.id
+      ? appState.activeTableCell
+      : null;
+  const hovered = appState.hoveredTableControl;
+  const geometry = getTableControlGeometry(table, appState.zoom);
+
+  context.save();
+  context.translate(
+    table.x + table.width / 2 + appState.scrollX,
+    table.y + table.height / 2 + appState.scrollY,
+  );
+  context.rotate(table.angle);
+  context.translate(-table.width / 2, -table.height / 2);
+
+  // the active cell, or the selected row / column
+  if (active && active.row < table.rowHeights.length) {
+    const rect = getTableSpanRect(table, active.row, active.col, active.span);
+    context.lineWidth = 2 * px;
+    context.strokeStyle = selectionColor;
+    if (active.span !== "cell") {
+      context.save();
+      context.globalAlpha = 0.1;
+      context.fillStyle = selectionColor;
+      context.fillRect(rect.x, rect.y, rect.width, rect.height);
+      context.restore();
+    }
+    context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+  }
+
+  // grips
+  const drawGrip = (
+    rect: { x: number; y: number; width: number; height: number },
+    isSelected: boolean,
+    isHovered: boolean,
+  ) => {
+    const isActive = isSelected || isHovered;
+    context.fillStyle = isActive ? selectionColor : colors.gripFill;
+    context.strokeStyle = isActive ? selectionColor : colors.gripBorder;
+    context.lineWidth = px;
+    roundRect(
+      context,
+      rect.x,
+      rect.y,
+      rect.width,
+      rect.height,
+      Math.min(rect.width, rect.height) / 2,
+    );
+  };
+  geometry.colGrips.forEach((rect, index) =>
+    drawGrip(
+      rect,
+      active?.span === "col" && active.col === index,
+      isSameTableControl(hovered, { kind: "col-grip", index }),
+    ),
+  );
+  geometry.rowGrips.forEach((rect, index) =>
+    drawGrip(
+      rect,
+      active?.span === "row" && active.row === index,
+      isSameTableControl(hovered, { kind: "row-grip", index }),
+    ),
+  );
+
+  // insert handles: a quiet dot, or a "+" button with the line it inserts at
+  const drawInsert = (
+    kind: "col-insert" | "row-insert",
+    index: number,
+    [cx, cy]: [number, number],
+  ) => {
+    const isHovered = isSameTableControl(hovered, { kind, index });
+    if (!isHovered) {
+      context.fillStyle = colors.dot;
+      context.beginPath();
+      context.arc(cx, cy, (TABLE_INSERT_DOT_SIZE / 2) * px, 0, Math.PI * 2);
+      context.fill();
+      return;
+    }
+    context.fillStyle = selectionColor;
+    if (kind === "col-insert") {
+      context.fillRect(cx - px, 0, 2 * px, table.height);
+    } else {
+      context.fillRect(0, cy - px, table.width, 2 * px);
+    }
+    const radius = (TABLE_INSERT_BUTTON_SIZE / 2) * px;
+    context.fillStyle = colors.ring;
+    context.beginPath();
+    context.arc(cx, cy, radius + 2 * px, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = selectionColor;
+    context.beginPath();
+    context.arc(cx, cy, radius, 0, Math.PI * 2);
+    context.fill();
+    context.strokeStyle = colors.ring;
+    context.lineWidth = 1.5 * px;
+    context.lineCap = "round";
+    const arm = radius * 0.45;
+    context.beginPath();
+    context.moveTo(cx - arm, cy);
+    context.lineTo(cx + arm, cy);
+    context.moveTo(cx, cy - arm);
+    context.lineTo(cx, cy + arm);
+    context.stroke();
+  };
+  geometry.colInserts.forEach((center, index) =>
+    drawInsert("col-insert", index, center),
+  );
+  geometry.rowInserts.forEach((center, index) =>
+    drawInsert("row-insert", index, center),
+  );
+
   context.restore();
 };
 
@@ -2037,6 +2188,19 @@ const _renderInteractiveScene = ({
 
       selections.forEach((selection) =>
         renderSelectionBorder(context, appState, selection),
+      );
+    }
+    if (
+      selectedElements.length === 1 &&
+      isTableElement(selectedElements[0]) &&
+      !selectedElements[0].locked &&
+      !appState.viewModeEnabled
+    ) {
+      renderTableControls(
+        context,
+        appState,
+        selectedElements[0],
+        selectionColor,
       );
     }
     // Paint resize transformHandles

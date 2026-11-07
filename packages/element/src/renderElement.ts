@@ -30,6 +30,7 @@ import {
   STICKY_NOTE_FOOTER,
   STICKY_NOTE_SHADOW_OPACITY,
   DEFAULT_ZOOM,
+  TABLE_HEADER_FILL_OPACITY,
 } from "@excalidraw/common";
 
 import type {
@@ -69,11 +70,13 @@ import {
   isMagicFrameElement,
   isFrameLikeElement,
   isImageElement,
+  isTableElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
+import { getTableCellFont, getTableLayout, getTableTextRuns } from "./table";
 import {
   getStickyNoteFooter,
   getStickyNotePathCommands,
@@ -218,6 +221,8 @@ export interface ExcalidrawElementWithCanvas {
   canvasOffsetY: number;
   imageCrop: ExcalidrawImageElement["crop"] | null;
   containingFrameOpacity: number;
+  /** what the bitmap of a table depends on besides the element, see `getTableCacheKey` */
+  tableKey: string;
 }
 
 const cappedElementCanvasSize = (
@@ -275,6 +280,23 @@ const cappedElementCanvasSize = (
   height = Math.floor(height * scale);
 
   return { width, height, scale };
+};
+
+/**
+ * Table bitmaps also depend on the scene variables and on which cell is hidden
+ * because it is being edited in place.
+ */
+const getTableCacheKey = (
+  element: ExcalidrawElement,
+  renderConfig: StaticCanvasRenderConfig,
+) => {
+  if (!isTableElement(element)) {
+    return "";
+  }
+  const cell = renderConfig.editingTableCell;
+  return `${renderConfig.variablesVersion ?? ""}|${
+    cell?.elementId === element.id ? `${cell.row}:${cell.col}` : ""
+  }`;
 };
 
 const generateElementCanvas = (
@@ -341,6 +363,7 @@ const generateElementCanvas = (
     containingFrameOpacity:
       getContainingFrame(element, elementsMap)?.opacity || 100,
     imageCrop: isImageElement(element) ? element.crop : null,
+    tableKey: getTableCacheKey(element, renderConfig),
   };
 };
 
@@ -494,6 +517,86 @@ const drawElementOnCanvas = (
           );
           context.globalAlpha *= STICKY_NOTE_FOOTER.opacity;
           context.fillText(footer.text, footer.x, footer.y);
+        }
+      });
+      break;
+    }
+    case "table": {
+      context.lineJoin = "round";
+      context.lineCap = "round";
+
+      const isDarkTheme = renderConfig.theme === THEME.DARK;
+
+      const [outline, ...dividers] = ShapeCache.generateElementShape(
+        element,
+        renderConfig,
+      );
+      rc.draw(outline);
+
+      if (element.headerRow) {
+        withSavedContext(context, () => {
+          if (element.roundness && context.roundRect) {
+            context.beginPath();
+            context.roundRect(
+              0,
+              0,
+              element.width,
+              element.height,
+              getCornerRadius(Math.min(element.width, element.height), element),
+            );
+            context.clip();
+          }
+          context.globalAlpha *= TABLE_HEADER_FILL_OPACITY;
+          context.fillStyle = applyDarkModeFilter(
+            element.strokeColor,
+            isDarkTheme,
+          );
+          context.fillRect(0, 0, element.width, element.rowHeights[0]);
+        });
+      }
+      dividers.forEach((shape) => rc.draw(shape));
+
+      withSavedContext(context, () => {
+        const layout = getTableLayout(
+          element,
+          renderConfig.variables,
+          renderConfig.renderEnvironment,
+        );
+        const hiddenCell = renderConfig.editingTableCell;
+        const isEditingThisTable = hiddenCell?.elementId === element.id;
+
+        context.fillStyle = applyDarkModeFilter(
+          element.strokeColor,
+          isDarkTheme,
+        );
+        context.textBaseline = "alphabetic";
+
+        for (const run of getTableTextRuns(element, layout)) {
+          if (
+            isEditingThisTable &&
+            hiddenCell.row === run.row &&
+            hiddenCell.col === run.col
+          ) {
+            continue;
+          }
+          withSavedContext(context, () => {
+            context.beginPath();
+            context.rect(
+              run.clip.x,
+              run.clip.y,
+              run.clip.width,
+              run.clip.height,
+            );
+            context.clip();
+            context.font = getTableCellFont(element, run.bold);
+            context.textAlign =
+              run.textAnchor === "middle"
+                ? "center"
+                : run.textAnchor === "end"
+                ? "right"
+                : "left";
+            context.fillText(run.text, run.x, run.y);
+          });
         }
       });
       break;
@@ -753,6 +856,8 @@ const generateElementWithCanvas = (
     prevElementWithCanvas.deviceScale !== renderConfig.scale ||
     prevElementWithCanvas.environment !== renderEnvironment ||
     prevElementWithCanvas.imageCrop !== imageCrop ||
+    prevElementWithCanvas.tableKey !==
+      getTableCacheKey(element, renderConfig) ||
     prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity
   ) {
     const elementWithCanvas = generateElementCanvas(
@@ -1156,6 +1261,7 @@ const drawElement = (
     }
     case "rectangle":
     case "stickynote":
+    case "table":
     case "diamond":
     case "ellipse":
     case "line":
