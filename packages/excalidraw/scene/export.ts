@@ -15,6 +15,7 @@ import {
   toBrandedType,
   applyDarkModeFilter,
   removeDarkModeFilter,
+  type VariableMap,
 } from "@excalidraw/common";
 
 import { getCommonBounds, getElementAbsoluteCoords } from "@excalidraw/element";
@@ -356,6 +357,12 @@ type ExportSceneBaseConfig = {
    * @default { name: true, outline: true, clip: true }
    */
   frames?: { name?: boolean; outline?: boolean; clip?: boolean };
+  /**
+   * Scene variables that `{{name}}` placeholders in table cells resolve to.
+   *
+   * @default empty (placeholders are exported as written)
+   */
+  variables?: VariableMap;
 };
 
 /**
@@ -925,6 +932,8 @@ const exportToCanvas = async ({
       elementsPendingErasure: new Set(),
       pendingFlowchartNodes: null,
       theme,
+      variables: cfg.variables ?? new Map(),
+      variablesVersion: "",
     },
   });
 
@@ -944,6 +953,7 @@ type ExportToSvgConfig = Pick<
   | "scale"
   | "frames"
   | "environment"
+  | "variables"
 > &
   ExportSizeConfig & {
     /**
@@ -1179,6 +1189,7 @@ const exportToSvg = async ({
         : new Map(),
       reuseImages: config?.reuseImages ?? true,
       theme,
+      variables: cfg.variables,
     },
   );
 

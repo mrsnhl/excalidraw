@@ -8,6 +8,7 @@ import {
   isTestEnv,
   toArray,
 } from "@excalidraw/common";
+
 import { isNonDeletedElement } from "@excalidraw/element";
 import { isFrameLikeElement } from "@excalidraw/element";
 import { getElementsInGroup } from "@excalidraw/element";
@@ -21,6 +22,8 @@ import {
 import { getSelectedElements } from "@excalidraw/element";
 
 import { mutateElement, type ElementUpdate } from "@excalidraw/element";
+
+import type { VariableMap } from "@excalidraw/common";
 
 import type {
   ExcalidrawElement,
@@ -146,6 +149,11 @@ export class Scene {
 
   getNonDeletedElementsMap() {
     return this.nonDeletedElementsMap;
+  }
+
+  // placeholder: replaced by scene variables (Part A)
+  getVariables(): { map: VariableMap; version: string } {
+    return { map: new Map(), version: "" };
   }
 
   getElementsIncludingDeleted() {

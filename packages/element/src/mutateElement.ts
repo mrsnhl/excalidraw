@@ -12,7 +12,7 @@ import { ShapeCache } from "./shape";
 
 import { updateElbowArrowPoints } from "./elbowArrow";
 
-import { isElbowArrow } from "./typeChecks";
+import { isElbowArrow, isTableElement } from "./typeChecks";
 
 import type {
   ElementsMap,
@@ -20,6 +20,19 @@ import type {
   ExcalidrawElement,
   NonDeletedSceneElementsMap,
 } from "./types";
+
+/** table fields that change what a table draws, besides its size */
+const TABLE_RENDER_KEYS = [
+  "cells",
+  "columnWidths",
+  "rowHeights",
+  "fontSize",
+  "fontFamily",
+  "lineHeight",
+  "textAlign",
+  "verticalAlign",
+  "headerRow",
+] as const;
 
 // `created` is lifetime metadata: it is set once when an element instance is
 // constructed (or duplicated) and never updated, so it is not part of an
@@ -134,7 +147,11 @@ export const mutateElement = <TElement extends Mutable<ExcalidrawElement>>(
     typeof updates.height !== "undefined" ||
     typeof updates.width !== "undefined" ||
     typeof fileId != "undefined" ||
-    typeof points !== "undefined"
+    typeof points !== "undefined" ||
+    (isTableElement(element) &&
+      TABLE_RENDER_KEYS.some(
+        (key) => typeof (updates as any)[key] !== "undefined",
+      ))
   ) {
     ShapeCache.delete(element);
   }

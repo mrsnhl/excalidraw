@@ -96,6 +96,7 @@ export * from "./showSelectedShapeActions";
 export * from "./sizeHelpers";
 export * from "./sortElements";
 export * from "./store";
+export * from "./table";
 export * from "./stickyNote";
 export * from "./textElement";
 export * from "./textMeasurements";
