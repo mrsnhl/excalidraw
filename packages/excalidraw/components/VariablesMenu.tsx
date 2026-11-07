@@ -1,5 +1,11 @@
 import clsx from "clsx";
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import {
   KEYS,
@@ -302,7 +308,19 @@ export const VariablesMenu = () => {
 
   // variables are not part of the (non-deleted) elements of the contexts
   const sceneNonce = useSyncExternalStore(
-    (onChange) => app.scene.onUpdate(onChange),
+    useCallback(
+      (onChange) => {
+        const unsubscribe = app.scene.onUpdate(onChange);
+        return () => {
+          // (the scene drops its subscribers when the editor unmounts, which
+          // can come before this cleanup, and unsubscribing then throws)
+          try {
+            unsubscribe();
+          } catch {}
+        };
+      },
+      [app],
+    ),
     () => app.scene.getSceneNonce(),
   );
 
