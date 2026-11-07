@@ -29,7 +29,11 @@ import {
   tableRowInsertAboveIcon,
   tableRowInsertBelowIcon,
 } from "./icons";
-import { useExcalidrawActionManager, useExcalidrawAppState } from "./App";
+import {
+  useApp,
+  useExcalidrawActionManager,
+  useExcalidrawAppState,
+} from "./App";
 
 import "./TableLineActions.scss";
 
@@ -46,6 +50,7 @@ export const TableLineActions = ({
 }: {
   element: ExcalidrawTableElement;
 }) => {
+  const app = useApp();
   const appState = useExcalidrawAppState();
   const actionManager = useExcalidrawActionManager();
   const active = appState.activeTableCell;
@@ -88,11 +93,14 @@ export const TableLineActions = ({
   const run = (
     action: typeof actionTableInsertColumnLeft | typeof actionTableDeleteColumn,
     at: number,
-  ) =>
+  ) => {
     actionManager.executeAction(action, "ui", {
       elementId: element.id,
       index: at,
     });
+    // the keys that follow go to the active cell, not to this button
+    app.focusContainer();
+  };
 
   const canDelete = isColumn
     ? canDeleteTableColumn(element)

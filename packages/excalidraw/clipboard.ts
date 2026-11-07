@@ -419,7 +419,12 @@ const parseClipboardEventTextData = async (
 
     return {
       type: "text",
-      value: (dataList.getData(MIME_TYPES.text) || "").trim(),
+      // tabs stay: they separate the cells of a spreadsheet selection, so an
+      // empty first or last cell must not be trimmed away
+      value: (dataList.getData(MIME_TYPES.text) || "").replace(
+        /^[ \r\n]+|[ \r\n]+$/g,
+        "",
+      ),
     };
   } catch {
     return { type: "text", value: "" };

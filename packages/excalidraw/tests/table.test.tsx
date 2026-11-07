@@ -380,6 +380,19 @@ describe("row and column controls", () => {
     );
     expect(getTable().x).toBe(table.x);
   });
+
+  it("shows the resize cursor over a divider", () => {
+    const table = createTable();
+    mouse.moveTo(table.x + DEFAULT_TABLE_COLUMN_WIDTH, table.y + 20);
+    expect(GlobalTestState.interactiveCanvas.style.cursor).toBe("col-resize");
+  });
+
+  it("selects a transparent table from a click inside", () => {
+    const table = createTable();
+    API.clearSelection();
+    mouse.clickAt(table.x + 10, table.y + 10);
+    expect(h.state.selectedElementIds).toEqual({ [table.id]: true });
+  });
 });
 
 describe("header row", () => {
@@ -434,6 +447,15 @@ describe("clipboard", () => {
       ["name", "role"],
       ["Ada", "dev"],
       ["Lin", "ops"],
+    ]);
+  });
+
+  it("keeps an empty first and last cell", async () => {
+    paste("\tB\nA\t");
+    await waitFor(() => expect(getTables()).toHaveLength(1));
+    expect(getTable().cells).toEqual([
+      ["", "B"],
+      ["A", ""],
     ]);
   });
 

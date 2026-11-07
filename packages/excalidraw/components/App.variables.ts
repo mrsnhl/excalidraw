@@ -128,14 +128,6 @@ export class AppVariables {
     if (getPassKey() === this.lastPassKey) {
       return;
     }
-    // the updates scheduled for this commit aren't in the store's snapshot
-    // yet, so it can't tell which changes the history has captured. Runs on
-    // the next update instead, once they are.
-    if (this.app.store.hasScheduledMicroActions) {
-      this.app.setState({});
-      return;
-    }
-    this.lastPassKey = getPassKey();
 
     const elements = scene.getElementsIncludingDeleted();
     const nextElements = refreshVariableDependents(elements, {
@@ -145,8 +137,18 @@ export class AppVariables {
     });
 
     if (nextElements === elements) {
+      this.lastPassKey = getPassKey();
+      this.consecutiveFixes = 0;
       return;
     }
+    // the updates scheduled for this commit aren't in the store's snapshot
+    // yet, so it can't tell which changes the history has captured. Fixes
+    // on the next update instead, once they are.
+    if (this.app.store.hasScheduledMicroActions) {
+      this.app.setState({});
+      return;
+    }
+    this.lastPassKey = getPassKey();
 
     // a layout that never settles (e.g. something else re-breaking what this
     // fixes on each update) must not re-render forever. Only counts the fixes

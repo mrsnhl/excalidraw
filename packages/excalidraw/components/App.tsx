@@ -6989,9 +6989,10 @@ class App extends React.Component<AppProps, AppState> {
       isOverScrollBar,
     );
 
-    if (!isOverScrollBar) {
-      this.table.updateHover(scenePointer);
-    }
+    // the cursor of a hovered table control or divider wins over "move"
+    const isOverTableControl = isOverScrollBar
+      ? false
+      : this.table.updateHover(scenePointer);
 
     const textToolTarget = this.textTool.updateHover(
       scenePointer,
@@ -7367,6 +7368,8 @@ class App extends React.Component<AppProps, AppState> {
         this.setState({ showHyperlinkPopup: "info" });
       } else if (this.state.activeTool.type === "text") {
         this.cursor.set(this.textTool.cursorFor(textToolTarget));
+      } else if (isOverTableControl) {
+        // keep the cursor set by the table controls
       } else if (
         !event[KEYS.CTRL_OR_CMD] &&
         this.selection.isHittingCommonBoundingBoxOfSelectedElements(

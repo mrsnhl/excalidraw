@@ -198,6 +198,8 @@ export const tableCellWysiwyg = ({
     resize: "none",
     background: "transparent",
     overflow: "hidden",
+    // must be above the interactive canvas, otherwise the typed text is hidden
+    zIndex: "var(--zIndex-wysiwyg)",
     // prevent line wrapping (`whitespace: nowrap` doesn't work on FF)
     whiteSpace: "pre-wrap",
     overflowWrap: "break-word",

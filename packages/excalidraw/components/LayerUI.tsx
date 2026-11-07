@@ -227,7 +227,9 @@ const LayerUI = ({
 
     return (
       <ImageExportDialog
-        elements={elements}
+        // the scene variables, which are hidden elements, are needed to
+        // resolve the table cells
+        elements={app.api.getSceneElements()}
         appState={appState}
         files={files}
         actionManager={actionManager}

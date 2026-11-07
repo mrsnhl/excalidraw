@@ -463,7 +463,7 @@ export class AppTable {
   }
 
   /** hover feedback for the selected table: the control under the pointer */
-  public updateHover(scenePoint: { x: number; y: number }) {
+  public updateHover(scenePoint: { x: number; y: number }): boolean {
     const table = this.getSelectedTable();
     let control = null;
     let cursor: string | null = null;
@@ -489,6 +489,7 @@ export class AppTable {
     if (cursor) {
       this.app.cursor.set(cursor);
     }
+    return !!cursor;
   }
 
   /**

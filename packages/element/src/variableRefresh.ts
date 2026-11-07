@@ -127,6 +127,7 @@ const getStaleTablePatch = (
   const patch = refreshTableLayout(table, variables.map, renderEnvironment);
   const isStale =
     patch.rowHeights.length !== table.rowHeights.length ||
+    Math.abs(patch.height - table.height) > TABLE_ROW_HEIGHT_TOLERANCE ||
     patch.rowHeights.some(
       (rowHeight, row) =>
         Math.abs(rowHeight - table.rowHeights[row]) >

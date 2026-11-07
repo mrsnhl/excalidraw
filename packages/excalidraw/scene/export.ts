@@ -1134,7 +1134,7 @@ const exportToSvg = async ({
 
   const fontFaces =
     config?.skipInliningFonts !== true
-      ? await Fonts.generateFontFaceDeclarations(elements, config?.variables)
+      ? await Fonts.generateFontFaceDeclarations(elements, cfg.variables)
       : [];
 
   const delimiter = "\n      "; // 6 spaces
