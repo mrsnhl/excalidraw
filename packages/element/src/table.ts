@@ -361,15 +361,12 @@ export const getAutoTableColumnWidths = (
   variables?: VariableMap | null,
   env?: RenderEnvironment,
 ) => {
-  const resolvedVariables = normalizeVariables(variables);
   const columns = cells[0]?.length ?? 0;
   return Array.from({ length: columns }, (_, col) => {
     let widest = 0;
     cells.forEach((rowCells, row) => {
       const font = getTableCellFont(element, headerRow && row === 0);
-      const text = normalizeText(
-        resolveVariables(rowCells[col], resolvedVariables),
-      );
+      const text = normalizeText(resolveVariables(rowCells[col], variables));
       for (const line of text.split("\n")) {
         widest = Math.max(widest, line ? getLineWidth(line, font, env) : 0);
       }
@@ -871,6 +868,29 @@ export const scaleTableGrid = (
   };
 };
 
+/**
+ * Resizes the table to a dragged outer size. The grid decides the final size:
+ * columns and row minimums scale with the drag, the row heights then grow to
+ * fit their content.
+ */
+export const getResizedTableGrid = (
+  orig: ExcalidrawTableElement,
+  latest: ExcalidrawTableElement,
+  nextWidth: number,
+  nextHeight: number,
+  variables?: VariableMap | null,
+  env?: RenderEnvironment,
+) => {
+  const scaledGrid = scaleTableGrid(orig, nextWidth, nextHeight);
+  const width = scaledGrid.columnWidths.reduce((a, b) => a + b, 0);
+  const { rowHeights, height } = refreshTableLayout(
+    { ...latest, ...scaledGrid, width },
+    variables,
+    env,
+  );
+  return { width, height, grid: { ...scaledGrid, rowHeights } };
+};
+
 /** equal split of `total` into `count` parts */
 export const splitTableSize = (total: number, count: number) =>
   Array.from({ length: count }, () => total / count);
@@ -884,10 +904,7 @@ export const getTableAsTSV = (
     .map((row) =>
       row
         .map((cell) =>
-          resolveVariables(cell, normalizeVariables(variables)).replace(
-            /[\t\r\n]+/g,
-            " ",
-          ),
+          resolveVariables(cell, variables).replace(/[\t\r\n]+/g, " "),
         )
         .join("\t"),
     )

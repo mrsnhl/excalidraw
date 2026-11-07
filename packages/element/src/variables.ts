@@ -136,7 +136,7 @@ export const countVariableUsage = (
       count(element.originalText);
     } else if (isTableElement(element)) {
       // all the cells of a table count as one element
-      count(element.cells.map((row) => row.join("\n")).join("\n"));
+      count(element.cells.flat().join("\n"));
     }
   }
   return usage;

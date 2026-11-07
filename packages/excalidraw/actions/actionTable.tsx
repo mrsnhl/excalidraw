@@ -52,7 +52,6 @@ const getGridActionResult = (
   appState: Readonly<AppState>,
   app: AppClassProperties,
   table: ExcalidrawTableElement,
-  edit: GridEdit,
   getPatch: (table: ExcalidrawTableElement) => Partial<ExcalidrawTableElement>,
   getActiveCell: (
     next: ExcalidrawTableElement,
@@ -144,7 +143,6 @@ const createInsertAction = (
         appState,
         app,
         table,
-        edit,
         (table) =>
           edit === "row"
             ? insertTableRow(table, at)
@@ -206,7 +204,6 @@ const createDeleteAction = (
         appState,
         app,
         table,
-        edit,
         (table) =>
           edit === "row"
             ? deleteTableRow(table, at)

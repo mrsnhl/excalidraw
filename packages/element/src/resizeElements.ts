@@ -66,7 +66,7 @@ import {
 import { getResolvedOriginalText } from "./variables";
 
 import { isInGroup } from "./groups";
-import { refreshTableLayout, scaleTableGrid } from "./table";
+import { getResizedTableGrid } from "./table";
 import {
   getStickyNoteMinSize,
   getStickyNoteResizeIntent,
@@ -794,26 +794,19 @@ export const resizeSingleElement = (
   nextWidth = Math.abs(nextWidth);
   nextHeight = Math.abs(nextHeight);
 
-  let tableGrid: Pick<
-    ExcalidrawTableElement,
-    "columnWidths" | "rowBaseHeights" | "rowHeights"
-  > | null = null;
+  let tableGrid: ReturnType<typeof getResizedTableGrid>["grid"] | null = null;
   if (isTableElement(latestElement) && isTableElement(origElement)) {
-    // the grid decides the size: columns and row minimums scale with the
-    // drag, the row heights then grow to fit their content
-    const scaledGrid = scaleTableGrid(origElement, nextWidth, nextHeight);
-    nextWidth = scaledGrid.columnWidths.reduce((a, b) => a + b, 0);
-    const { rowHeights, height } = refreshTableLayout(
-      {
-        ...latestElement,
-        ...scaledGrid,
-        width: nextWidth,
-      },
+    const resized = getResizedTableGrid(
+      origElement,
+      latestElement,
+      nextWidth,
+      nextHeight,
       scene.getVariables().map,
       renderEnvironment,
     );
-    nextHeight = height;
-    tableGrid = { ...scaledGrid, rowHeights };
+    nextWidth = resized.width;
+    nextHeight = resized.height;
+    tableGrid = resized.grid;
   }
 
   const elementsMap = scene.getNonDeletedElementsMap();
@@ -1478,21 +1471,20 @@ export const resizeMultipleElements = (
 
       let width = orig.width * scaleX;
       let height = orig.height * scaleY;
-      let tableGrid: Pick<
-        ExcalidrawTableElement,
-        "columnWidths" | "rowBaseHeights" | "rowHeights"
-      > | null = null;
+      let tableGrid: ReturnType<typeof getResizedTableGrid>["grid"] | null =
+        null;
       if (isTableElement(orig) && isTableElement(latest)) {
-        // same as the single resize: the grid decides the final size
-        const scaledGrid = scaleTableGrid(orig, width, height);
-        width = scaledGrid.columnWidths.reduce((a, b) => a + b, 0);
-        const refreshed = refreshTableLayout(
-          { ...latest, ...scaledGrid, width },
+        const resized = getResizedTableGrid(
+          orig,
+          latest,
+          width,
+          height,
           scene.getVariables().map,
           renderEnvironment,
         );
-        height = refreshed.height;
-        tableGrid = { ...scaledGrid, rowHeights: refreshed.rowHeights };
+        width = resized.width;
+        height = resized.height;
+        tableGrid = resized.grid;
       }
       const angle = normalizeRadians(
         (orig.angle * flipFactorX * flipFactorY) as Radians,

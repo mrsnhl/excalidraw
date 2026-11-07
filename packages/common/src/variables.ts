@@ -57,57 +57,31 @@ export const resolveVariables = (
   });
 };
 
-/**
- * Rewrites `{{oldName}}` (any inner whitespace) to `{{newName}}`.
- * Returns the same string instance when nothing changed.
- */
+/** replaces every `{{name}}` reference (any inner whitespace) with `replacement` */
+const replaceVariableReferences = (
+  text: string,
+  name: string,
+  replacement: string,
+): string =>
+  text.includes("{{")
+    ? text.replace(getPlaceholderRegex(), (placeholder, refName: string) =>
+        refName === name ? replacement : placeholder,
+      )
+    : text;
+
+/** rewrites `{{oldName}}` (any inner whitespace) to `{{newName}}` */
 export const renameVariableReferences = (
   text: string,
   oldName: string,
   newName: string,
-): string => {
-  if (!text.includes("{{")) {
-    return text;
-  }
-  let changed = false;
-  const next = text.replace(
-    getPlaceholderRegex(),
-    (placeholder, name: string) => {
-      if (name !== oldName) {
-        return placeholder;
-      }
-      changed = true;
-      return `{{${newName}}}`;
-    },
-  );
-  return changed ? next : text;
-};
+): string => replaceVariableReferences(text, oldName, `{{${newName}}}`);
 
-/**
- * Replaces every `{{name}}` reference with a literal value.
- * Returns the same string instance when nothing changed.
- */
+/** replaces every `{{name}}` reference with a literal value */
 export const inlineVariableReferences = (
   text: string,
   name: string,
   value: string,
-): string => {
-  if (!text.includes("{{")) {
-    return text;
-  }
-  let changed = false;
-  const next = text.replace(
-    getPlaceholderRegex(),
-    (placeholder, refName: string) => {
-      if (refName !== name) {
-        return placeholder;
-      }
-      changed = true;
-      return value;
-    },
-  );
-  return changed ? next : text;
-};
+): string => replaceVariableReferences(text, name, value);
 
 /**
  * Character ranges of placeholders whose name is not in `variables`.

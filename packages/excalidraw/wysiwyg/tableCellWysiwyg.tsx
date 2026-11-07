@@ -22,6 +22,7 @@ import {
   wrapText,
 } from "@excalidraw/element";
 
+import type { TableCellPosition } from "@excalidraw/element";
 import type {
   ExcalidrawTableElement,
   NonDeleted,
@@ -40,8 +41,6 @@ import {
 } from "../actions/actionProperties";
 
 import type App from "../components/App";
-
-export type TableCellPosition = { row: number; col: number };
 
 type SubmitHandler = () => void;
 
@@ -83,8 +82,7 @@ export const tableCellWysiwyg = ({
   initialValue?: string | null;
   autoSelect?: boolean;
 }): SubmitHandler => {
-  const ownerDocument = excalidrawContainer?.ownerDocument ?? app.ownerDocument;
-  const ownerWindow = ownerDocument.defaultView ?? app.ownerWindow;
+  const { ownerDocument, ownerWindow } = app;
   const editorBox =
     excalidrawContainer?.querySelector<HTMLDivElement>(
       ".excalidraw-textEditorContainer",
@@ -328,36 +326,21 @@ export const tableCellWysiwyg = ({
       moveTo(getNextCell(event.shiftKey ? -1 : 1));
     } else if (plainArrow && atCaret) {
       // arrow keys leave the cell only from its edge
-      if (event.key === KEYS.ARROW_LEFT && selectionStart === 0) {
-        const next = getAdjacentCell(0, -1);
-        if (next) {
-          event.preventDefault();
-          moveTo(next);
-        }
-      } else if (
-        event.key === KEYS.ARROW_RIGHT &&
-        selectionStart === value.length
-      ) {
-        const next = getAdjacentCell(0, 1);
-        if (next) {
-          event.preventDefault();
-          moveTo(next);
-        }
-      } else if (event.key === KEYS.ARROW_UP && selectionStart === 0) {
-        const next = getAdjacentCell(-1, 0);
-        if (next) {
-          event.preventDefault();
-          moveTo(next);
-        }
-      } else if (
-        event.key === KEYS.ARROW_DOWN &&
-        selectionStart === value.length
-      ) {
-        const next = getAdjacentCell(1, 0);
-        if (next) {
-          event.preventDefault();
-          moveTo(next);
-        }
+      const atStart = selectionStart === 0;
+      const atEnd = selectionStart === value.length;
+      const next =
+        event.key === KEYS.ARROW_LEFT && atStart
+          ? getAdjacentCell(0, -1)
+          : event.key === KEYS.ARROW_RIGHT && atEnd
+          ? getAdjacentCell(0, 1)
+          : event.key === KEYS.ARROW_UP && atStart
+          ? getAdjacentCell(-1, 0)
+          : event.key === KEYS.ARROW_DOWN && atEnd
+          ? getAdjacentCell(1, 0)
+          : null;
+      if (next) {
+        event.preventDefault();
+        moveTo(next);
       }
     }
   };

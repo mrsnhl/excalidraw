@@ -18,10 +18,7 @@ import {
   rewriteVariableTexts,
 } from "@excalidraw/element";
 
-import type {
-  ExcalidrawElement,
-  ExcalidrawVariableElement,
-} from "@excalidraw/element/types";
+import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import { variablesIcon } from "../components/icons";
 
@@ -39,7 +36,6 @@ const withRefreshedDependents = (
   app: AppClassProperties,
 ): ActionResult => ({
   elements: refreshVariableDependents(elements, {
-    variables: buildVariableMap(elements),
     renderEnvironment: app.renderEnvironment,
   }),
   captureUpdate: CaptureUpdateAction.IMMEDIATELY,
@@ -173,9 +169,7 @@ export const actionDeleteVariable = register<{
     }
     let nextElements: readonly ExcalidrawElement[] = elements.map((element) =>
       element === variable
-        ? newElementWith(variable as ExcalidrawVariableElement, {
-            isDeleted: true,
-          })
+        ? newElementWith(variable, { isDeleted: true })
         : element,
     );
     if (formData!.mode === "inline") {

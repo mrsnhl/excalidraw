@@ -26,6 +26,7 @@ import {
   setTableCell,
 } from "@excalidraw/element";
 
+import type { TableUpdate } from "@excalidraw/element";
 import type {
   ExcalidrawTableElement,
   NonDeleted,
@@ -191,6 +192,19 @@ export class AppTable {
   // editing
   // ---------------------------------------------------------------------------
 
+  /** applies a grid edit, refreshing the layout against the variables */
+  private updateTable(table: ExcalidrawTableElement, patch: TableUpdate) {
+    this.app.scene.mutateElement(
+      table,
+      getTableUpdate(
+        table,
+        patch,
+        this.app.scene.getVariables().map,
+        this.app.renderEnvironment,
+      ),
+    );
+  }
+
   private setCellText(
     elementId: string,
     row: number,
@@ -206,15 +220,7 @@ export class AppTable {
     ) {
       return;
     }
-    this.app.scene.mutateElement(
-      table,
-      getTableUpdate(
-        table,
-        setTableCell(table, row, col, text),
-        this.app.scene.getVariables().map,
-        this.app.renderEnvironment,
-      ),
-    );
+    this.updateTable(table, setTableCell(table, row, col, text));
   }
 
   public startCellEditing(
@@ -285,14 +291,9 @@ export class AppTable {
         if (next && latest && isTableElement(latest)) {
           // past the last row (Tab on the last cell): append one
           if (next.row >= getTableRowCount(latest)) {
-            app.scene.mutateElement(
+            this.updateTable(
               latest,
-              getTableUpdate(
-                latest,
-                insertTableRow(latest, getTableRowCount(latest)),
-                app.scene.getVariables().map,
-                app.renderEnvironment,
-              ),
+              insertTableRow(latest, getTableRowCount(latest)),
             );
             app.store.scheduleCapture();
           }
@@ -325,9 +326,8 @@ export class AppTable {
     }
     const cells = table.cells.map((cells, row) =>
       cells.map((text, col) =>
-        (cell.span === "row" ? row === cell.row : true) &&
-        (cell.span === "col" ? col === cell.col : true) &&
-        (cell.span !== "cell" || (row === cell.row && col === cell.col))
+        (cell.span === "col" || row === cell.row) &&
+        (cell.span === "row" || col === cell.col)
           ? ""
           : text,
       ),
@@ -340,15 +340,7 @@ export class AppTable {
       return;
     }
     this.app.store.scheduleCapture();
-    this.app.scene.mutateElement(
-      table,
-      getTableUpdate(
-        table,
-        { cells },
-        this.app.scene.getVariables().map,
-        this.app.renderEnvironment,
-      ),
-    );
+    this.updateTable(table, { cells });
   }
 
   // ---------------------------------------------------------------------------
@@ -591,15 +583,7 @@ export class AppTable {
               localY - getTableRowOffsets(latest)[divider.index],
             );
       hasMoved = true;
-      app.scene.mutateElement(
-        latest,
-        getTableUpdate(
-          latest,
-          patch,
-          app.scene.getVariables().map,
-          app.renderEnvironment,
-        ),
-      );
+      this.updateTable(latest, patch);
     });
 
     const onPointerUp = withBatchedUpdates(() => {

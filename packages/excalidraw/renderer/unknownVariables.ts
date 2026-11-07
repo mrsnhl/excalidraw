@@ -210,8 +210,6 @@ export const getUnknownVariableHighlights = (
         highlights.push(highlight);
       }
     }
-  }
-  for (const element of selectedElements) {
     add(element);
     add(getBoundTextElement(element, elementsMap));
   }

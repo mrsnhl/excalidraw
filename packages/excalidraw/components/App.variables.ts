@@ -1,6 +1,5 @@
 import {
   CaptureUpdateAction,
-  buildVariableMap,
   getWinningVariableElements,
   isValidVariableName,
   newElementWith,
@@ -108,7 +107,6 @@ export class AppVariables {
     ];
     this.app.updateScene({
       elements: refreshVariableDependents(nextElements, {
-        variables: buildVariableMap(nextElements),
         renderEnvironment: this.app.renderEnvironment,
       }),
       captureUpdate: opts?.captureUpdate ?? CaptureUpdateAction.IMMEDIATELY,
