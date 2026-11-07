@@ -224,6 +224,46 @@ describe("scene variables", () => {
       expect(API.getUndoStack().length).toBe(undoDepth);
     });
 
+    it("keeps re-resolving after many remote updates", async () => {
+      const text = API.createElement({ type: "text", text: "{{price}}" });
+      setScene([createVariable("price", "0"), text]);
+
+      for (let value = 1; value <= 6; value++) {
+        setScene(
+          h.elements.map((element) =>
+            isVariableElement(element)
+              ? { ...element, value: `${value}`, version: element.version + 1 }
+              : element,
+          ),
+        );
+        expect(getText(text).text).toBe(`${value}`);
+        // (separate updates, as remote ones are)
+        await Promise.resolve();
+      }
+    });
+
+    it("keeps a host update without a capture undoable", () => {
+      run(actionCreateVariable, { name: "price", value: "$12" });
+      const undoDepth = API.getUndoStack().length;
+
+      // the host adds a text that is not resolved yet, to be captured later
+      const text = API.createElement({ type: "text", text: "{{price}}" });
+      API.updateScene({
+        elements: [...h.elements, text],
+        captureUpdate: CaptureUpdateAction.EVENTUALLY,
+      });
+      expect(getText(text).text).toBe("$12");
+
+      // the next capture takes the text in, and undo removes it again
+      h.app.store.scheduleCapture();
+      API.updateScene({ elements: h.elements });
+      expect(API.getUndoStack().length).toBe(undoDepth + 1);
+      Keyboard.undo();
+      expect(
+        h.elements.find((element) => element.id === text.id)?.isDeleted,
+      ).toBe(true);
+    });
+
     it("renames the variable and rewrites the references in one step", () => {
       run(actionCreateVariable, { name: "price", value: "$12" });
       const text = API.createElement({
@@ -540,6 +580,26 @@ describe("scene variables", () => {
 
       expect(getVariable("price")).toBeUndefined();
       expect(getText(text).originalText).toBe("$12");
+    });
+
+    it("drops the value draft on Escape, and commits it once on Enter", async () => {
+      setScene([createVariable("price", "$12")]);
+      await openPanel();
+      const valueInput =
+        screen.getByLabelText<HTMLInputElement>("Value: price");
+
+      valueInput.focus();
+      fireEvent.change(valueInput, { target: { value: "$99" } });
+      fireEvent.keyDown(valueInput, { key: "Escape" });
+      expect(getVariable("price")!.value).toBe("$12");
+      expect(valueInput.value).toBe("$12");
+
+      const undoStackSize = h.history.undoStack.length;
+      valueInput.focus();
+      fireEvent.change(valueInput, { target: { value: "$15" } });
+      fireEvent.keyDown(valueInput, { key: "Enter" });
+      expect(getVariable("price")!.value).toBe("$15");
+      expect(h.history.undoStack.length).toBe(undoStackSize + 1);
     });
 
     it("flags a duplicated name", async () => {

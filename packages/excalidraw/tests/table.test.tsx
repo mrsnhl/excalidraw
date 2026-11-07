@@ -219,6 +219,28 @@ describe("cell editing", () => {
     expect(getTable().cells.length).toBe(2);
   });
 
+  it("starts editing on typing, but not on Space or from a focused button", async () => {
+    const table = createTable();
+    act(() => {
+      h.app.table.setActiveCell(table, 0, 0, "cell");
+    });
+
+    // a focused UI control keeps its keys
+    const button = document.createElement("button");
+    document.body.appendChild(button);
+    fireEvent.keyDown(button, { key: KEYS.ENTER });
+    button.remove();
+    expect(getEditor()).toBeNull();
+
+    // space is for panning
+    Keyboard.keyDown(KEYS.SPACE);
+    Keyboard.keyUp(KEYS.SPACE);
+    expect(getEditor()).toBeNull();
+
+    Keyboard.keyPress("x");
+    await waitFor(() => expect(getEditor()?.value).toBe("x"));
+  });
+
   it("grows the row when the text wraps", async () => {
     const table = createTable();
     act(() => {
@@ -369,6 +391,17 @@ describe("header row", () => {
     Keyboard.undo();
     expect(getTable().headerRow).toBe(false);
   });
+
+  it("leaves a locked table alone", () => {
+    const table = createTable();
+    API.updateScene({
+      elements: [{ ...table, locked: true }],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    API.setSelectedElements([table]);
+    API.executeAction(actionToggleTableHeaderRow);
+    expect(getTable().headerRow).toBe(false);
+  });
 });
 
 describe("context menu", () => {
@@ -505,5 +538,25 @@ describe("export", () => {
     expect(
       [...svg.querySelectorAll("text")].map((text) => text.textContent),
     ).toContain("{{name}}");
+  });
+
+  it("resolves against the scene's variables when none are passed", async () => {
+    const variable = API.createElement({
+      type: "variable",
+      id: "variable-export",
+      name: "name",
+      value: "FromScene",
+      index: "a1" as FractionalIndex,
+    });
+    const svg = await exportScene({
+      type: "svg",
+      data: { elements: [createExportTable(), variable], files: {} },
+      config: { canvasBackgroundColor: false, skipInliningFonts: true },
+    });
+    const texts = [...svg.querySelectorAll("text")].map(
+      (text) => text.textContent,
+    );
+    expect(texts).toContain("FromScene");
+    expect(texts).not.toContain("{{name}}");
   });
 });

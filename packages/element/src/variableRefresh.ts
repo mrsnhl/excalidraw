@@ -106,45 +106,50 @@ const refreshStaleTexts = (
 const tableHasPlaceholders = (table: ExcalidrawTableElement) =>
   table.cells.some((row) => row.some(hasVariablePlaceholders));
 
+type TableLayoutPatch = ReturnType<typeof refreshTableLayout>;
+
 /**
- * A table is stale when its row heights no longer fit its cells with the
- * current variable values (the cells themselves always hold the raw text).
+ * Row heights within this many pixels count as the same, so clients whose
+ * font metrics differ slightly don't keep rewriting each other's tables.
  */
-const isTableStale = (
+const TABLE_ROW_HEIGHT_TOLERANCE = 1;
+
+/**
+ * Returns the layout patch when the table's row heights no longer fit its
+ * cells with the current variable values (the cells themselves always hold
+ * the raw text), `null` when the table is fresh.
+ */
+const getStaleTablePatch = (
   table: ExcalidrawTableElement,
   variables: SceneVariables,
   renderEnvironment: RenderEnvironment | undefined,
-) => {
-  const { rowHeights, height } = refreshTableLayout(
-    table,
-    variables.map,
-    renderEnvironment,
-  );
-  return (
-    height !== table.height ||
-    rowHeights.some((rowHeight, row) => rowHeight !== table.rowHeights[row])
-  );
+): TableLayoutPatch | null => {
+  const patch = refreshTableLayout(table, variables.map, renderEnvironment);
+  const isStale =
+    patch.rowHeights.length !== table.rowHeights.length ||
+    patch.rowHeights.some(
+      (rowHeight, row) =>
+        Math.abs(rowHeight - table.rowHeights[row]) >
+        TABLE_ROW_HEIGHT_TOLERANCE,
+    );
+  return isStale ? patch : null;
 };
 
 /**
- * Re-lays out the given tables inside the (scratch) scene, so their row
- * heights follow the resolved cell text. Mutates the scene.
+ * Applies the layout patches of the stale tables inside the (scratch) scene,
+ * and moves what is bound to them. Mutates the scene.
  */
 const refreshStaleTables = (
   scene: Scene,
-  tableIds: readonly string[],
-  variables: SceneVariables,
+  staleTables: ReadonlyMap<string, TableLayoutPatch>,
   renderEnvironment: RenderEnvironment | undefined,
 ) => {
-  for (const id of tableIds) {
+  for (const [id, patch] of staleTables) {
     const table = scene.getElement(id);
     if (!table || !isTableElement(table) || table.isDeleted) {
       continue;
     }
-    scene.mutateElement(
-      table,
-      refreshTableLayout(table, variables.map, renderEnvironment),
-    );
+    scene.mutateElement(table, patch);
     updateBoundElements(table as NonDeletedExcalidrawElement, scene, {
       renderEnvironment,
     });
@@ -175,7 +180,7 @@ export const refreshVariableDependents = <T extends ExcalidrawElement>(
   const skipIds = opts.skipIds ?? new Set<string>();
 
   const staleTextIds: string[] = [];
-  const staleTableIds: string[] = [];
+  const staleTables = new Map<string, TableLayoutPatch>();
 
   for (const element of elements) {
     if (
@@ -204,15 +209,20 @@ export const refreshVariableDependents = <T extends ExcalidrawElement>(
       if (!tableHasPlaceholders(element)) {
         continue;
       }
-      if (isTableStale(element, variables, opts.renderEnvironment)) {
-        staleTableIds.push(element.id);
+      const patch = getStaleTablePatch(
+        element,
+        variables,
+        opts.renderEnvironment,
+      );
+      if (patch) {
+        staleTables.set(element.id, patch);
       } else {
         verifiedFresh.set(element, getFreshnessKey(element, variables.version));
       }
     }
   }
 
-  if (!staleTextIds.length && !staleTableIds.length) {
+  if (!staleTextIds.length && !staleTables.size) {
     return elements;
   }
 
@@ -223,7 +233,7 @@ export const refreshVariableDependents = <T extends ExcalidrawElement>(
   scratch.replaceAllElements(copies, { skipValidation: true });
 
   refreshStaleTexts(scratch, staleTextIds, opts.renderEnvironment);
-  refreshStaleTables(scratch, staleTableIds, variables, opts.renderEnvironment);
+  refreshStaleTables(scratch, staleTables, opts.renderEnvironment);
 
   const originalsMap = arrayToMap(elements);
   const changed = new Map<string, ExcalidrawElement>();

@@ -91,11 +91,11 @@ export const getTextareaCaretAnchor = (
   caretOffset = textarea.selectionEnd,
 ): CaretAnchor => {
   const ownerDocument = textarea.ownerDocument;
-  const ownerWindow = ownerDocument.defaultView ?? window;
+  const ownerWindow = ownerDocument.defaultView;
   const rect = textarea.getBoundingClientRect();
   const fallback = { left: rect.left, top: rect.top, bottom: rect.bottom };
 
-  if (!ownerDocument.body) {
+  if (!ownerDocument.body || !ownerWindow) {
     return fallback;
   }
 
@@ -301,11 +301,11 @@ export const VariableAutocomplete = () => {
   // the list is placed under the caret, or above it where there's no room
   useEffect(() => {
     const list = listRef.current;
-    if (!state || !list) {
+    const ownerWindow = list?.ownerDocument.defaultView;
+    if (!state || !list || !ownerWindow) {
       return;
     }
-    const { innerHeight, innerWidth } =
-      list.ownerDocument.defaultView ?? window;
+    const { innerHeight, innerWidth } = ownerWindow;
     const { width, height } = list.getBoundingClientRect();
     const { anchor } = state;
     const fitsBelow = anchor.bottom + 4 + height <= innerHeight;

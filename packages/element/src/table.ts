@@ -209,8 +209,8 @@ export const getTableTextRuns = (
       const clip: TableRect = {
         x: layout.colX[col],
         y: layout.rowY[row],
-        width: element.columnWidths[col],
-        height: element.rowHeights[row],
+        width: element.columnWidths[col] ?? DEFAULT_TABLE_COLUMN_WIDTH,
+        height: element.rowHeights[row] ?? DEFAULT_TABLE_ROW_HEIGHT,
       };
       const top =
         element.verticalAlign === "top"
@@ -286,11 +286,7 @@ export const refreshTableLayout = (
   variables?: VariableMap | null,
   env?: RenderEnvironment,
 ): Pick<ExcalidrawTableElement, "rowHeights" | "height"> => {
-  const { contentHeights } = computeTableLayout(
-    element,
-    normalizeVariables(variables),
-    env,
-  );
+  const { contentHeights } = getTableLayout(element, variables, env);
   const rowHeights = element.cells.map((_, row) =>
     Math.max(
       element.rowBaseHeights[row] ?? DEFAULT_TABLE_ROW_HEIGHT,
@@ -479,8 +475,8 @@ export const getTableCellRect = (
   return {
     x: colX[col],
     y: rowY[row],
-    width: element.columnWidths[col],
-    height: element.rowHeights[row],
+    width: element.columnWidths[col] ?? DEFAULT_TABLE_COLUMN_WIDTH,
+    height: element.rowHeights[row] ?? DEFAULT_TABLE_ROW_HEIGHT,
   };
 };
 

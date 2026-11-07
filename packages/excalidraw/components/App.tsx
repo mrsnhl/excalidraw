@@ -2576,7 +2576,8 @@ class App extends React.Component<AppProps, AppState> {
                                 />
                               </ElementCanvasButtons>
                             )}
-                          {selectedElements.length === 1 &&
+                          {this.isDefaultUIEnabled() &&
+                            selectedElements.length === 1 &&
                             isTableElement(firstSelectedElement) &&
                             !firstSelectedElement.locked && (
                               <TableLineActions

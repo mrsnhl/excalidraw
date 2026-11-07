@@ -88,6 +88,9 @@ const VariableCard = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const [draftValue, setDraftValue] = useState<string | null>(null);
+  // Enter and Escape blur the field once they're done with the draft, and the
+  // blur must not commit it (again)
+  const skipBlurCommitRef = useRef(false);
   const [draftName, setDraftName] = useState(variable.name);
 
   const normalizedDraftName = normalizeVariableName(draftName);
@@ -231,16 +234,23 @@ const VariableCard = ({
         readOnly={readOnly}
         value={draftValue ?? variable.value}
         onChange={(event) => setDraftValue(event.target.value)}
-        onBlur={commitValue}
+        onBlur={() => {
+          if (!skipBlurCommitRef.current) {
+            commitValue();
+          }
+        }}
         onKeyDown={(event) => {
           event.stopPropagation();
           if (event.key === KEYS.ENTER) {
             commitValue();
-            event.currentTarget.blur();
           } else if (event.key === KEYS.ESCAPE) {
             setDraftValue(null);
-            event.currentTarget.blur();
+          } else {
+            return;
           }
+          skipBlurCommitRef.current = true;
+          event.currentTarget.blur();
+          skipBlurCommitRef.current = false;
         }}
       />
       {nameError && isRenaming && (

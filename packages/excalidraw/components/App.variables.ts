@@ -24,7 +24,7 @@ import type App from "./App";
  * on their own, so this one is the safety net for all the other paths.
  */
 export class AppVariables {
-  /** `<scene nonce>:<edited text id>` the last pass has run for */
+  /** `<scene nonce>:<edited element ids>` the last pass has run for */
   private lastPassKey: string | null = null;
   private consecutiveFixes = 0;
 
@@ -118,38 +118,63 @@ export class AppVariables {
    * is committed. Cheap when the scene has not changed.
    */
   public refreshIfNeeded() {
-    const { scene } = this.app;
-    const editingId = this.app.state.editingTextElement?.id ?? null;
-    const passKey = `${scene.getSceneNonce()}:${editingId}`;
+    const { scene, state } = this.app;
+    const editingIds = [
+      state.editingTextElement?.id,
+      state.activeTableCell?.editing ? state.activeTableCell.elementId : null,
+    ].filter((id): id is string => !!id);
+    const getPassKey = () => `${scene.getSceneNonce()}:${editingIds.join(",")}`;
 
-    if (passKey === this.lastPassKey) {
+    if (getPassKey() === this.lastPassKey) {
       return;
     }
-    this.lastPassKey = passKey;
+    // the updates scheduled for this commit aren't in the store's snapshot
+    // yet, so it can't tell which changes the history has captured. Runs on
+    // the next update instead, once they are.
+    if (this.app.store.hasScheduledMicroActions) {
+      this.app.setState({});
+      return;
+    }
+    this.lastPassKey = getPassKey();
 
     const elements = scene.getElementsIncludingDeleted();
     const nextElements = refreshVariableDependents(elements, {
       variables: scene.getVariables(),
-      skipIds: editingId ? new Set([editingId]) : undefined,
+      skipIds: new Set(editingIds),
       renderEnvironment: this.app.renderEnvironment,
     });
 
     if (nextElements === elements) {
-      this.consecutiveFixes = 0;
       return;
     }
 
-    // a layout that never settles would otherwise keep re-rendering forever
+    // a layout that never settles (e.g. something else re-breaking what this
+    // fixes on each update) must not re-render forever. Only counts the fixes
+    // of one synchronous update cascade, so it never stays switched off.
     if (++this.consecutiveFixes > 3) {
       return;
     }
+    if (this.consecutiveFixes === 1) {
+      Promise.resolve().then(() => {
+        this.consecutiveFixes = 0;
+      });
+    }
 
-    // never part of the history: after an undo the text is re-derived, it's
-    // not an undo step of its own
+    // not an undo step of its own: after an undo the text is re-derived. But
+    // when a fixed element has changes the history hasn't captured yet, the
+    // fix has to go along with them, or it'd swallow them
+    const snapshotElements = this.app.store.snapshot.elements;
+    const hasPendingChanges = nextElements.some(
+      (element, index) =>
+        element !== elements[index] &&
+        snapshotElements.get(element.id)?.version !== elements[index].version,
+    );
     this.app.updateScene({
       elements: nextElements,
-      captureUpdate: CaptureUpdateAction.NEVER,
+      captureUpdate: hasPendingChanges
+        ? CaptureUpdateAction.EVENTUALLY
+        : CaptureUpdateAction.NEVER,
     });
-    this.lastPassKey = `${scene.getSceneNonce()}:${editingId}`;
+    this.lastPassKey = getPassKey();
   }
 }

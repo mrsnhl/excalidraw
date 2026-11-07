@@ -350,7 +350,12 @@ export class AppTable {
   /** a key pressed with the canvas focused; returns whether it was handled */
   public handleKeyDown(event: KeyboardEvent | React.KeyboardEvent): boolean {
     const table = this.getSelectedTable();
-    if (!table || this.app.state.viewModeEnabled || this.submitHandler) {
+    if (
+      !table ||
+      this.app.state.viewModeEnabled ||
+      this.submitHandler ||
+      !this.isCanvasKeyTarget(event.target)
+    ) {
       return false;
     }
     const cell = this.getActiveCell(table);
@@ -415,7 +420,8 @@ export class AppTable {
       return true;
     }
 
-    if (event.key.length === 1) {
+    // (space stays for panning)
+    if (event.key.length === 1 && event.key !== KEYS.SPACE) {
       // typing replaces the cell's text
       event.preventDefault();
       this.startCellEditing(table, cell.row, cell.col, {
@@ -424,6 +430,22 @@ export class AppTable {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Keys go to the table only when the canvas has the focus, not a focused
+   * UI control (a toolbar button, a menu item…) that handles them itself.
+   */
+  private isCanvasKeyTarget(target: EventTarget | null) {
+    const { ownerDocument } = this.app;
+    return (
+      !target ||
+      target === ownerDocument ||
+      target === ownerDocument.body ||
+      target === ownerDocument.documentElement ||
+      target === this.app.excalidrawContainerValue.container ||
+      (target as Element).tagName === "CANVAS"
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -436,7 +458,7 @@ export class AppTable {
       !viewModeEnabled &&
       !this.app.state.newElement &&
       !this.app.state.selectionElement &&
-      activeTool.type === "selection"
+      (activeTool.type === "selection" || activeTool.type === "lasso")
     );
   }
 
@@ -535,8 +557,12 @@ export class AppTable {
     pointerDownState: PointerDownState,
   ) {
     const ownerWindow = this.app.ownerWindow;
-    const onPointerUp = (upEvent: PointerEvent) => {
+    const removeListeners = () => {
       ownerWindow.removeEventListener(EVENT.POINTER_UP, onPointerUp);
+      ownerWindow.removeEventListener(EVENT.POINTER_CANCEL, removeListeners);
+    };
+    const onPointerUp = (upEvent: PointerEvent) => {
+      removeListeners();
       if (pointerDownState.drag.hasOccurred) {
         return;
       }
@@ -551,6 +577,7 @@ export class AppTable {
       }
     };
     ownerWindow.addEventListener(EVENT.POINTER_UP, onPointerUp);
+    ownerWindow.addEventListener(EVENT.POINTER_CANCEL, removeListeners);
   }
 
   /** a divider drag resizes the column on its left, or the row above it */
@@ -590,6 +617,7 @@ export class AppTable {
       app.host.setPointerUp(null);
       ownerWindow.removeEventListener(EVENT.POINTER_MOVE, onPointerMove);
       ownerWindow.removeEventListener(EVENT.POINTER_UP, onPointerUp);
+      ownerWindow.removeEventListener(EVENT.POINTER_CANCEL, onPointerUp);
       if (hasMoved) {
         app.store.scheduleCapture();
       }
@@ -600,6 +628,8 @@ export class AppTable {
     app.host.setPointerUp(onPointerUp);
     ownerWindow.addEventListener(EVENT.POINTER_MOVE, onPointerMove);
     ownerWindow.addEventListener(EVENT.POINTER_UP, onPointerUp);
+    // a cancelled drag keeps what it resized so far
+    ownerWindow.addEventListener(EVENT.POINTER_CANCEL, onPointerUp);
     app.cursor.set(
       divider.kind === "col" ? CURSOR_COL_RESIZE : CURSOR_ROW_RESIZE,
     );

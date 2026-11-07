@@ -586,6 +586,8 @@ const configExportDimension = async ({
   const variableElements = restoredElements.filter(
     (element) => isVariableElement(element) && !element.isDeleted,
   );
+  // without explicit variables, table cells resolve against the scene's own
+  cfg.variables ??= buildVariableMap(variableElements).map;
 
   // initialize defaults
   // ---------------------------------------------------------------------------

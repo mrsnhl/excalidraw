@@ -270,11 +270,14 @@ export const actionToggleTableHeaderRow = register<boolean | undefined>({
   trackEvent: { category: "element" },
   predicate: (elements, appState, _, app) =>
     !appState.viewModeEnabled &&
-    app.scene.getSelectedElements(appState).some(isTableElement),
+    app.scene
+      .getSelectedElements(appState)
+      .some((element) => isTableElement(element) && !element.locked),
   perform: (elements, appState, value, app) => {
     const tables = app.scene
       .getSelectedElements(appState)
-      .filter(isTableElement);
+      .filter(isTableElement)
+      .filter((table) => !table.locked);
     if (!tables.length) {
       return false;
     }
@@ -283,7 +286,7 @@ export const actionToggleTableHeaderRow = register<boolean | undefined>({
 
     return {
       elements: changeProperty(elements, appState, (element) =>
-        isTableElement(element) && element.headerRow !== next
+        isTableElement(element) && !element.locked && element.headerRow !== next
           ? newElementWith(
               element,
               getTableUpdate(

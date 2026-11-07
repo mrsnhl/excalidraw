@@ -197,5 +197,8 @@ describe("tryParseTable", () => {
     expect(tryParseTable("a\tb\nc").ok).toBe(false);
     expect(tryParseTable("just\nsome\nlines").ok).toBe(false);
     expect(tryParseTable("").ok).toBe(false);
+    // a single line, or a column that is empty in every row
+    expect(tryParseTable("a\tb").ok).toBe(false);
+    expect(tryParseTable("\tfoo\n\tbar").ok).toBe(false);
   });
 });

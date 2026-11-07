@@ -39,6 +39,7 @@ import {
   actionDecreaseFontSize,
   actionIncreaseFontSize,
 } from "../actions/actionProperties";
+import { t } from "../i18n";
 
 import type App from "../components/App";
 
@@ -174,6 +175,10 @@ export const tableCellWysiwyg = ({
   editable.dir = "auto";
   editable.tabIndex = 0;
   editable.dataset.type = "wysiwyg";
+  editable.setAttribute(
+    "aria-label",
+    t("labels.tableCell", { row: row + 1, column: col + 1 }),
+  );
   editable.classList.add("excalidraw-wysiwyg", "excalidraw-table-cell-wysiwyg");
   editable.value = initialValue ?? element.cells[row]?.[col] ?? "";
 

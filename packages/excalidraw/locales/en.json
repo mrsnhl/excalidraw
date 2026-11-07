@@ -203,6 +203,7 @@
     "tableRowActions": "Row actions",
     "tableColumnActions": "Column actions",
     "tableHeaderRow": "Header row",
+    "tableCell": "Cell, row {{row}}, column {{column}}",
     "tab": "Tab",
     "shapeSwitch": "Switch shape",
     "preferences": "Preferences",

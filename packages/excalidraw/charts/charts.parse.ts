@@ -247,7 +247,14 @@ export const tryParseTable = (text: string): ParseTableResult => {
       rows.pop();
     }
     const numCols = rows[0]?.length ?? 0;
-    if (numCols > 1 && rows.every((row) => row.length === numCols)) {
+    // a single line, or a column with nothing in it (indented code, prose
+    // with stray delimiters), is not taken for a table
+    if (
+      rows.length > 1 &&
+      numCols > 1 &&
+      rows.every((row) => row.length === numCols) &&
+      rows[0].every((_, col) => rows.some((row) => row[col].trim() !== ""))
+    ) {
       return { ok: true, cells: rows, delimiter };
     }
   }
