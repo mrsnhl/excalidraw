@@ -44,6 +44,13 @@ export type ActionFilterFn = (action: Action) => void;
 
 export type ActionName =
   | "copy"
+  | "tableInsertRowAbove"
+  | "tableInsertRowBelow"
+  | "tableInsertColumnLeft"
+  | "tableInsertColumnRight"
+  | "tableDeleteRow"
+  | "tableDeleteColumn"
+  | "toggleTableHeaderRow"
   | "cut"
   | "paste"
   | "copyAsPng"
