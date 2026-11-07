@@ -1998,6 +1998,76 @@ export const stickyNoteToolIcon = createIcon(
   tablerIconProps,
 );
 
+export const tableToolIcon = createIcon(
+  <g strokeWidth={1.5}>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"></path>
+    <path d="M4 10h16"></path>
+    <path d="M10 4v16"></path>
+  </g>,
+  tablerIconProps,
+);
+
+export const tableColumnInsertLeftIcon = createIcon(
+  <g strokeWidth={1.5}>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1z"></path>
+    <path d="M5 12l4 0"></path>
+    <path d="M7 10l0 4"></path>
+  </g>,
+  tablerIconProps,
+);
+
+export const tableColumnInsertRightIcon = createIcon(
+  <g strokeWidth={1.5}>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <path d="M6 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1z"></path>
+    <path d="M15 12l4 0"></path>
+    <path d="M17 10l0 4"></path>
+  </g>,
+  tablerIconProps,
+);
+
+export const tableRowInsertAboveIcon = createIcon(
+  <g strokeWidth={1.5}>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <path d="M4 18v-4a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z"></path>
+    <path d="M12 9v-4"></path>
+    <path d="M10 7l4 0"></path>
+  </g>,
+  tablerIconProps,
+);
+
+export const tableRowInsertBelowIcon = createIcon(
+  <g strokeWidth={1.5}>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <path d="M20 6v4a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1z"></path>
+    <path d="M12 15l0 4"></path>
+    <path d="M10 17l4 0"></path>
+  </g>,
+  tablerIconProps,
+);
+
+export const tableColumnDeleteIcon = createIcon(
+  <g strokeWidth={1.5}>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <path d="M6 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1z"></path>
+    <path d="M16 10l4 4"></path>
+    <path d="M16 14l4 -4"></path>
+  </g>,
+  tablerIconProps,
+);
+
+export const tableRowDeleteIcon = createIcon(
+  <g strokeWidth={1.5}>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <path d="M20 6v4a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1z"></path>
+    <path d="M10 16l4 4"></path>
+    <path d="M10 20l4 -4"></path>
+  </g>,
+  tablerIconProps,
+);
+
 export const mermaidLogoIcon = createIcon(
   <path
     fill="currentColor"

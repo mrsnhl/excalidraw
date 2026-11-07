@@ -1,0 +1,61 @@
+.excalidraw {
+  .excalidraw-table-line-actions {
+    position: absolute;
+    z-index: var(--zIndex-canvasButtons);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    background: var(--island-bg-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0px 2px 4px 0 rgb(0 0 0 / 30%);
+
+    // the bar hugs the grip: above a column, to the left of a row
+    &--column {
+      transform: translate(-50%, calc(-100% - var(--table-bar-gap)));
+    }
+
+    &--row {
+      transform: translate(calc(-100% - var(--table-bar-gap)), -50%);
+    }
+
+    button {
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: var(--border-radius-md);
+      background: transparent;
+      color: var(--icon-fill-color);
+      cursor: pointer;
+
+      svg {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      &:hover:not(:disabled) {
+        background: var(--button-hover-bg);
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      &.danger {
+        color: var(--color-danger);
+      }
+    }
+
+    &__separator {
+      width: 1px;
+      height: 1.25rem;
+      margin: 0 2px;
+      background: var(--default-border-color);
+    }
+  }
+}
