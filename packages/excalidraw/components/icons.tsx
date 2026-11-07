@@ -2163,6 +2163,17 @@ export const searchIcon = createIcon(
   tablerIconProps,
 );
 
+// variable
+export const variablesIcon = createIcon(
+  <g strokeWidth={1.5}>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M5 4c-2.5 5 -2.5 11 0 16m14 -16c2.5 5 2.5 11 0 16" />
+    <path d="M9 9h1c1 0 1 1 2.016 3.527c.984 2.473 .984 3.473 1.984 3.473h1" />
+    <path d="M8 16c1.5 0 3 -2 4 -3.5s2.5 -3.5 4 -3.5" />
+  </g>,
+  tablerIconProps,
+);
+
 // clock-bolt
 export const historyCommandIcon = createIcon(
   <g strokeWidth={1.5}>

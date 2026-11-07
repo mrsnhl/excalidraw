@@ -1,11 +1,18 @@
-import { resolveVariables } from "@excalidraw/common";
-
-import { hashString } from ".";
-import { isVariableElement } from "./typeChecks";
+import { parseVariableReferences, resolveVariables } from "@excalidraw/common";
 
 import type { VariableMap } from "@excalidraw/common";
 
-import type { ExcalidrawElement, ExcalidrawVariableElement } from "./types";
+import { newElementWith } from "./mutateElement";
+
+import { isTextElement, isVariableElement } from "./typeChecks";
+
+import { hashString } from ".";
+
+import type {
+  ExcalidrawElement,
+  ExcalidrawTextElement,
+  ExcalidrawVariableElement,
+} from "./types";
 
 export {
   VARIABLE_NAME_MAX_LENGTH,
@@ -105,3 +112,58 @@ export const getResolvedOriginalText = (
   textElement: { originalText: string },
   variables: VariableMap | null | undefined,
 ): string => resolveVariables(textElement.originalText, variables);
+
+/**
+ * How many elements reference each variable name (a name used several times
+ * in one element counts once). Includes the names with no variable behind
+ * them.
+ */
+export const countVariableUsage = (
+  elements: readonly ExcalidrawElement[],
+): Map<string, number> => {
+  const usage = new Map<string, number>();
+  const count = (text: string) => {
+    for (const name of parseVariableReferences(text)) {
+      usage.set(name, (usage.get(name) ?? 0) + 1);
+    }
+  };
+  for (const element of elements) {
+    if (element.isDeleted) {
+      continue;
+    }
+    if (isTextElement(element)) {
+      count(element.originalText);
+    }
+    // tables: wired after merge (count the references in `table.cells`)
+  }
+  return usage;
+};
+
+/**
+ * Applies `rewrite` to the raw (placeholder) text of every element that has
+ * one. Returns the same array when nothing changed, otherwise a copy where
+ * only the changed elements are new objects.
+ */
+export const rewriteVariableTexts = <T extends ExcalidrawElement>(
+  elements: readonly T[],
+  rewrite: (text: string) => string,
+): readonly T[] => {
+  let changed = false;
+  const next = elements.map((element) => {
+    if (element.isDeleted) {
+      return element;
+    }
+    if (isTextElement(element)) {
+      const originalText = rewrite(element.originalText);
+      if (originalText !== element.originalText) {
+        changed = true;
+        return newElementWith<ExcalidrawTextElement>(element, {
+          originalText,
+        }) as ExcalidrawElement as T;
+      }
+    }
+    // tables: wired after merge (rewrite `table.cells`)
+    return element;
+  });
+  return changed ? next : elements;
+};

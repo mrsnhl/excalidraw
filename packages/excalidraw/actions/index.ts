@@ -92,5 +92,12 @@ export { actionToggleElementLock } from "./actionElementLock";
 export { actionToggleLinearEditor } from "./actionLinearEditor";
 
 export { actionToggleSearchMenu } from "./actionToggleSearchMenu";
+export {
+  actionToggleVariablesMenu,
+  actionCreateVariable,
+  actionUpdateVariable,
+  actionRenameVariable,
+  actionDeleteVariable,
+} from "./actionVariables";
 
 export { actionToggleCropEditor } from "./actionCropEditor";
