@@ -104,6 +104,26 @@ export type ExcalidrawStickyNoteElement = _ExcalidrawElementBase &
     baseHeight: number;
   }>;
 
+export type ExcalidrawTableElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "table";
+    /** cells[row][col], raw text including {{name}} placeholders */
+    cells: readonly (readonly string[])[];
+    /** one entry per column, scene units, sum === width */
+    columnWidths: readonly number[];
+    /** user-set minimum height per row */
+    rowBaseHeights: readonly number[];
+    /** laid-out height per row = max(base, content), sum === height */
+    rowHeights: readonly number[];
+    fontSize: number;
+    fontFamily: FontFamilyValues;
+    lineHeight: ExcalidrawTextElement["lineHeight"];
+    textAlign: TextAlign;
+    verticalAlign: VerticalAlign;
+    /** bold, lightly shaded first row */
+    headerRow: boolean;
+  }>;
+
 export type ExcalidrawDiamondElement = _ExcalidrawElementBase & {
   type: "diamond";
 };
@@ -207,6 +227,7 @@ export type ExcalidrawFlowchartNodeElement =
 export type ExcalidrawRectanguloidElement =
   | ExcalidrawRectangleElement
   | ExcalidrawStickyNoteElement
+  | ExcalidrawTableElement
   | ExcalidrawImageElement
   | ExcalidrawTextElement
   | ExcalidrawFreeDrawElement
@@ -223,6 +244,7 @@ export type ExcalidrawRectanguloidElement =
 export type ExcalidrawElement =
   | ExcalidrawGenericElement
   | ExcalidrawStickyNoteElement
+  | ExcalidrawTableElement
   | ExcalidrawTextElement
   | ExcalidrawLinearElement
   | ExcalidrawArrowElement
@@ -231,7 +253,8 @@ export type ExcalidrawElement =
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement
   | ExcalidrawIframeElement
-  | ExcalidrawEmbeddableElement;
+  | ExcalidrawEmbeddableElement
+  | ExcalidrawVariableElement;
 
 export type ExcalidrawNonSelectionElement = Exclude<
   ExcalidrawElement,
@@ -249,6 +272,19 @@ export type NonDeleted<TElement extends ExcalidrawElement> = TElement & {
 };
 
 export type NonDeletedExcalidrawElement = NonDeleted<ExcalidrawElement>;
+
+/**
+ * Hidden scene-level element holding one named variable that text can
+ * reference as `{{name}}`. Never rendered, selected or hit-tested.
+ */
+export type ExcalidrawVariableElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "variable";
+    /** must satisfy isValidVariableName */
+    name: string;
+    /** plain string; "\n" allowed (renders as a line break) */
+    value: string;
+  }>;
 
 export type ExcalidrawTextElement = _ExcalidrawElementBase &
   Readonly<{
@@ -293,6 +329,7 @@ export type ExcalidrawTextElement = _ExcalidrawElementBase &
 export type ExcalidrawBindableElement =
   | ExcalidrawRectangleElement
   | ExcalidrawStickyNoteElement
+  | ExcalidrawTableElement
   | ExcalidrawDiamondElement
   | ExcalidrawEllipseElement
   | ExcalidrawTextElement

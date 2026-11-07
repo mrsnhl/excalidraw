@@ -231,6 +231,7 @@ export const generateRoughOptions = (
 
   switch (element.type) {
     case "rectangle":
+    case "table":
     case "iframe":
     case "embeddable":
     case "diamond":
@@ -889,6 +890,47 @@ const _generateElementShape = (
       }
       return shape;
     }
+    case "table": {
+      const w = element.width;
+      const h = element.height;
+      const options = generateRoughOptions(
+        element,
+        element.roundness !== null,
+        isDarkMode,
+      );
+      const shapes: Drawable[] = [];
+
+      // (1) outer border + background
+      if (element.roundness) {
+        const r = getCornerRadius(Math.min(w, h), element);
+        shapes.push(
+          generator.path(
+            `M ${r} 0 L ${w - r} 0 Q ${w} 0, ${w} ${r} L ${w} ${
+              h - r
+            } Q ${w} ${h}, ${w - r} ${h} L ${r} ${h} Q 0 ${h}, 0 ${
+              h - r
+            } L 0 ${r} Q 0 0, ${r} 0`,
+            options,
+          ),
+        );
+      } else {
+        shapes.push(generator.rectangle(0, 0, w, h, options));
+      }
+
+      // (2) inner dividers, never filled
+      const lineOptions = { ...options, fill: undefined };
+      let x = 0;
+      for (const columnWidth of element.columnWidths.slice(0, -1)) {
+        x += columnWidth;
+        shapes.push(generator.line(x, 0, x, h, lineOptions));
+      }
+      let y = 0;
+      for (const rowHeight of element.rowHeights.slice(0, -1)) {
+        y += rowHeight;
+        shapes.push(generator.line(0, y, w, y, lineOptions));
+      }
+      return shapes;
+    }
     case "diamond": {
       let shape: ElementShapes[typeof element.type];
 
@@ -1058,7 +1100,8 @@ const _generateElementShape = (
     case "frame":
     case "magicframe":
     case "text":
-    case "image": {
+    case "image":
+    case "variable": {
       const shape: ElementShapes[typeof element.type] = null;
       // we return (and cache) `null` to make sure we don't regenerate
       // `element.canvas` on rerenders
@@ -1170,6 +1213,7 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
   switch (element.type) {
     case "rectangle":
     case "stickynote":
+    case "table":
     case "diamond":
     case "frame":
     case "magicframe":
@@ -1179,6 +1223,12 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
     case "text":
     case "selection":
       return getPolygonShape(element);
+    case "variable":
+      // hidden & zero-sized, never hit-tested. A degenerate shape is returned
+      // so that stray callers don't have to deal with a missing one.
+      return getPolygonShape(
+        element as unknown as Parameters<typeof getPolygonShape>[0],
+      );
     case "arrow":
     case "line": {
       const roughShape = ShapeCache.generateElementShape(element, null)[0];

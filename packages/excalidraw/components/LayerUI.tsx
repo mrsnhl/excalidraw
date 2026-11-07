@@ -48,6 +48,8 @@ import { useAppProps, useEditorInterface, useStylesPanelMode } from "./App";
 import { OverwriteConfirmDialog } from "./OverwriteConfirm/OverwriteConfirm";
 import { sidebarRightIcon } from "./icons";
 import { DefaultSidebar } from "./DefaultSidebar";
+import { UnknownVariableTooltip } from "./UnknownVariableTooltip";
+import { VariableAutocomplete } from "./VariableAutocomplete";
 import { TTDDialog } from "./TTDDialog/TTDDialog";
 import { Stats } from "./Stats";
 import ElementLinkDialog from "./ElementLinkDialog";
@@ -225,7 +227,9 @@ const LayerUI = ({
 
     return (
       <ImageExportDialog
-        elements={elements}
+        // the scene variables, which are hidden elements, are needed to
+        // resolve the table cells
+        elements={app.api.getSceneElements()}
         appState={appState}
         files={files}
         actionManager={actionManager}
@@ -582,6 +586,8 @@ const LayerUI = ({
         />
       )}
       <ActiveConfirmDialog />
+      <VariableAutocomplete />
+      <UnknownVariableTooltip />
       {defaultUIEnabled && appState.openDialog?.name === "elementLinkSelector" && (
         <ElementLinkDialog
           sourceElementId={appState.openDialog.sourceElementId}

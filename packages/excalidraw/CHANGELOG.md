@@ -13,6 +13,13 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### Scene variables
+
+- Text can reference scene variables with `{{name}}`. The text keeps the placeholder (`originalText`) and displays the variable's value, on the canvas and in every export. Variables are managed in the new "Variables" sidebar tab, or through `excalidrawAPI.getVariables()` / `excalidrawAPI.setVariables({ name: "value", other: null })`.
+- Variables are stored as hidden `"variable"` elements (`{ type: "variable", name, value }`), so they're saved, synced and undone like any other element; `convertToExcalidrawElements` accepts the `{ type: "variable", name, value }` skeleton. New exports: `resolveVariables`, `parseVariableReferences`, `isValidVariableName`, `isVariableElement`, `newVariableElement`, and the `VariableMap` and `ExcalidrawVariableElement` types.
+- **Behavior change:** `excalidrawAPI.getSceneElements()` now includes the non-deleted variable elements, so hosts that save from it keep the variables (hosts rendering from it should skip `isVariableElement(element)`). `getNonDeletedElements()` from `@excalidraw/element` and the scene's own `getNonDeletedElements()` exclude them.
+- Library items don't carry variables: `{{name}}` placeholders in a library item resolve against the scene it's inserted into. Copy/paste carries the variables the copied text references; names the target scene already has keep their value.
+
 ### Arrows aren't clipped to frames (2026-10-31) [#12516](https://github.com/excalidraw/excalidraw/pull/12516)
 
 - Arrows and their labels are no longer clipped to the frame they belong to, so they can connect elements across and out of frames, and their part outside the frame can be selected. They still belong to their frame, so they're moved, copied and deleted with it, but only while one of their ends is in it (bound to an element in the frame, or inside it). An arrow whose ends both leave its frame (moved, bound to elements outside it, or with the elements it's bound to) leaves the frame.

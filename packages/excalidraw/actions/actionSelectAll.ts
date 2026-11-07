@@ -1,6 +1,10 @@
 import { getNonDeletedElements } from "@excalidraw/element";
 import { LinearElementEditor } from "@excalidraw/element";
-import { isLinearElement, isTextElement } from "@excalidraw/element";
+import {
+  isLinearElement,
+  isTextElement,
+  isVariableElement,
+} from "@excalidraw/element";
 
 import { arrayToMap, KEYS } from "@excalidraw/common";
 
@@ -33,6 +37,7 @@ export const actionSelectAll = register({
       .filter(
         (element) =>
           !element.isDeleted &&
+          !isVariableElement(element) &&
           !(isTextElement(element) && element.containerId) &&
           !element.locked,
       )

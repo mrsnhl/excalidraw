@@ -1,11 +1,18 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { newTextElement } from "@excalidraw/element";
+import { newTableElementFromCells, newTextElement } from "@excalidraw/element";
 
-import type { ChartType } from "@excalidraw/element/types";
+import type {
+  ChartType,
+  ExcalidrawTableElement,
+} from "@excalidraw/element/types";
 
 import { trackEvent } from "../analytics";
-import { isSpreadsheetValidForChartType, renderSpreadsheet } from "../charts";
+import {
+  isSpreadsheetValidForChartType,
+  renderSpreadsheet,
+  tryParseTable,
+} from "../charts";
 import { t } from "../i18n";
 import { exportScene } from "../scene/export";
 
@@ -184,6 +191,64 @@ const PlainTextPreviewBtn = (props: {
   );
 };
 
+const TablePreviewBtn = (props: {
+  cells: string[][];
+  onClick: (table: ExcalidrawTableElement) => void;
+}) => {
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const { theme } = useUIAppState();
+  const { renderEnvironment } = useApp();
+  const table = useMemo(
+    () =>
+      newTableElementFromCells({
+        cells: props.cells,
+        x: 0,
+        y: 0,
+        renderEnvironment,
+      }),
+    [props.cells, renderEnvironment],
+  );
+
+  useLayoutEffect(() => {
+    const previewNode = previewRef.current!;
+
+    (async () => {
+      const svg = await exportScene({
+        type: "svg",
+        data: {
+          elements: [table],
+          files: null,
+        },
+        config: {
+          skipInliningFonts: true,
+          theme,
+          canvasBackgroundColor: false,
+          environment: renderEnvironment,
+        },
+      });
+      svg.querySelector(".style-fonts")?.remove();
+      previewNode.replaceChildren();
+      previewNode.appendChild(svg);
+    })();
+
+    return () => {
+      previewNode.replaceChildren();
+    };
+  }, [table, theme, renderEnvironment]);
+
+  return (
+    <button
+      type="button"
+      className="ChartPreview"
+      aria-label={t("labels.chartType_table")}
+      onClick={() => props.onClick(table)}
+    >
+      <div className="ChartPreview__canvas" ref={previewRef} />
+      <div className="ChartPreview__label">{t("labels.chartType_table")}</div>
+    </button>
+  );
+};
+
 export const PasteChartDialog = ({
   data,
   rawText,
@@ -209,6 +274,15 @@ export const PasteChartDialog = ({
   const handleChartClick = (chartType: ChartType, elements: ChartElements) => {
     onInsertElements(elements);
     trackEvent("paste", "chart", chartType);
+    onClose();
+    focusContainer();
+  };
+
+  const parsedTable = useMemo(() => tryParseTable(rawText), [rawText]);
+
+  const handleTableClick = (table: ExcalidrawTableElement) => {
+    onInsertElements([table]);
+    trackEvent("paste", "chart", "table");
     onClose();
     focusContainer();
   };
@@ -270,6 +344,12 @@ export const PasteChartDialog = ({
             />
           );
         })}
+        {parsedTable.ok && (
+          <TablePreviewBtn
+            cells={parsedTable.cells}
+            onClick={handleTableClick}
+          />
+        )}
         {rawText && (
           <PlainTextPreviewBtn
             rawText={rawText}

@@ -15,6 +15,7 @@ import {
   STICKY_NOTE_EDGE_SHADOW_WIDTH,
   STICKY_NOTE_FOOTER,
   STICKY_NOTE_SHADOW_OPACITY,
+  TABLE_HEADER_FILL_OPACITY,
 } from "@excalidraw/common";
 import { normalizeLink, toValidURL } from "@excalidraw/common";
 import { hashString } from "@excalidraw/element";
@@ -26,6 +27,7 @@ import {
 import { LinearElementEditor } from "@excalidraw/element";
 import { getBoundTextElement, getContainerElement } from "@excalidraw/element";
 import { getLineHeightInPx } from "@excalidraw/element";
+import { getTableLayout, getTableTextRuns } from "@excalidraw/element";
 import {
   isArrowElement,
   isIframeLikeElement,
@@ -259,6 +261,103 @@ const renderElementToSvg = (
         dateText.setAttribute("fill-opacity", `${STICKY_NOTE_FOOTER.opacity}`);
         dateText.textContent = footer.text;
         group.appendChild(dateText);
+      }
+
+      const g = maybeWrapNodesInFrameClipPath(
+        element,
+        root,
+        [group],
+        renderConfig.frameRendering,
+        elementsMap,
+      );
+
+      addToRoot(g || group, element);
+      break;
+    }
+    case "table": {
+      const doc = svgRoot.ownerDocument;
+      const isDarkTheme = renderConfig.theme === THEME.DARK;
+      const group = doc.createElementNS(SVG_NS, "g");
+      group.setAttribute(
+        "transform",
+        `translate(${offsetX || 0} ${
+          offsetY || 0
+        }) rotate(${degree} ${cx} ${cy})`,
+      );
+      if (opacity !== 1) {
+        group.setAttribute("opacity", `${opacity}`);
+      }
+
+      const [outline, ...dividers] = ShapeCache.generateElementShape(
+        element,
+        renderConfig,
+      );
+      const drawShape = (shape: Drawable) => {
+        const node = roughSVGDrawWithPrecision(
+          rsvg,
+          shape,
+          MAX_DECIMALS_FOR_SVG_EXPORT,
+        );
+        node.setAttribute("stroke-linecap", "round");
+        return node;
+      };
+      group.appendChild(drawShape(outline));
+
+      if (element.headerRow) {
+        const header = doc.createElementNS(SVG_NS, "rect");
+        header.setAttribute("x", "0");
+        header.setAttribute("y", "0");
+        header.setAttribute("width", `${element.width}`);
+        header.setAttribute("height", `${element.rowHeights[0]}`);
+        header.setAttribute(
+          "fill",
+          applyDarkModeFilter(element.strokeColor, isDarkTheme),
+        );
+        header.setAttribute("fill-opacity", `${TABLE_HEADER_FILL_OPACITY}`);
+        group.appendChild(header);
+      }
+      dividers.forEach((shape) => group.appendChild(drawShape(shape)));
+
+      const layout = getTableLayout(
+        element,
+        renderConfig.variables,
+        renderConfig.renderEnvironment,
+      );
+      const clipPathIds = new Set<string>();
+      for (const run of getTableTextRuns(element, layout)) {
+        // every cell clips its own text
+        const clipId = `table-clip-${element.id}-${run.row}-${run.col}`;
+        if (!clipPathIds.has(clipId)) {
+          clipPathIds.add(clipId);
+          const clipPath = doc.createElementNS(SVG_NS, "clipPath");
+          clipPath.setAttribute("id", clipId);
+          const clipRect = doc.createElementNS(SVG_NS, "rect");
+          clipRect.setAttribute("x", `${run.clip.x}`);
+          clipRect.setAttribute("y", `${run.clip.y}`);
+          clipRect.setAttribute("width", `${run.clip.width}`);
+          clipRect.setAttribute("height", `${run.clip.height}`);
+          clipPath.appendChild(clipRect);
+          group.appendChild(clipPath);
+        }
+        const text = doc.createElementNS(SVG_NS, "text");
+        text.textContent = run.text;
+        text.setAttribute("x", `${run.x}`);
+        text.setAttribute("y", `${run.y}`);
+        text.setAttribute("font-family", getFontFamilyString(element));
+        text.setAttribute("font-size", `${element.fontSize}px`);
+        if (run.bold) {
+          text.setAttribute("font-weight", "bold");
+        }
+        text.setAttribute(
+          "fill",
+          applyDarkModeFilter(element.strokeColor, isDarkTheme),
+        );
+        text.setAttribute("text-anchor", run.textAnchor);
+        text.setAttribute("style", "white-space: pre;");
+        text.setAttribute("direction", "ltr");
+        text.setAttribute("dominant-baseline", "alphabetic");
+        text.setAttribute("clip-path", `url(#${clipId})`);
+        group.appendChild(text);
       }
 
       const g = maybeWrapNodesInFrameClipPath(

@@ -186,6 +186,9 @@ export const SelectedShapeActions = ({
       )}
 
       {predicates.verticalAlign && renderAction("changeVerticalAlign")}
+      {predicates.tableHeaderRow && (
+        <fieldset>{renderAction("toggleTableHeaderRow")}</fieldset>
+      )}
       {predicates.arrowheads && <>{renderAction("changeArrowhead")}</>}
 
       {predicates.opacity && renderAction("changeOpacity")}
@@ -571,6 +574,8 @@ const CombinedExtraActions = ({
                   {showDuplicate && renderAction("duplicateSelection")}
                   {showDelete && renderAction("deleteSelectedElements")}
                 </div>
+                {predicates.tableHeaderRow &&
+                  renderAction("toggleTableHeaderRow")}
               </fieldset>
             </div>
           </PropertiesPopover>

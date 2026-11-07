@@ -60,10 +60,13 @@ import {
   isImageElement,
   isLinearElement,
   isStickyNoteElement,
+  isTableElement,
   isTextElement,
 } from "./typeChecks";
+import { getResolvedOriginalText } from "./variables";
 
 import { isInGroup } from "./groups";
+import { getResizedTableGrid } from "./table";
 import {
   getStickyNoteMinSize,
   getStickyNoteResizeIntent,
@@ -90,6 +93,7 @@ import type {
   ElementsMap,
   ExcalidrawElbowArrowElement,
   ExcalidrawArrowElement,
+  ExcalidrawTableElement,
 } from "./types";
 import type { ElementUpdate } from "./mutateElement";
 
@@ -387,7 +391,7 @@ export const resizeSingleTextElement = (
     const newWidth = Math.max(minWidth, nextWidth);
 
     const text = wrapText(
-      element.originalText,
+      getResolvedOriginalText(element, scene.getVariables().map),
       getFontString(element),
       Math.abs(newWidth),
       renderEnvironment,
@@ -783,10 +787,27 @@ export const resizeSingleElement = (
 
   // Constraints and font scaling use magnitudes. Keep the signs for the
   // geometry below, where crossing the opposite edge flips the element.
-  const flipFactorX = nextWidth < 0 ? -1 : 1;
-  const flipFactorY = nextHeight < 0 ? -1 : 1;
+  // tables never flip, dragging past the opposite edge stops at the minimum
+  const isResizingTable = isTableElement(latestElement);
+  const flipFactorX = nextWidth < 0 && !isResizingTable ? -1 : 1;
+  const flipFactorY = nextHeight < 0 && !isResizingTable ? -1 : 1;
   nextWidth = Math.abs(nextWidth);
   nextHeight = Math.abs(nextHeight);
+
+  let tableGrid: ReturnType<typeof getResizedTableGrid>["grid"] | null = null;
+  if (isTableElement(latestElement) && isTableElement(origElement)) {
+    const resized = getResizedTableGrid(
+      origElement,
+      latestElement,
+      nextWidth,
+      nextHeight,
+      scene.getVariables().map,
+      renderEnvironment,
+    );
+    nextWidth = resized.width;
+    nextHeight = resized.height;
+    tableGrid = resized.grid;
+  }
 
   const elementsMap = scene.getNonDeletedElementsMap();
   const boundTextElement = getBoundTextElement(latestElement, elementsMap);
@@ -951,6 +972,7 @@ export const resizeSingleElement = (
       width: Math.abs(nextWidth),
       height: Math.abs(nextHeight),
       ...rescaledPoints,
+      ...tableGrid,
     };
 
     if (isBindingElement(latestElement)) {
@@ -1433,7 +1455,12 @@ export const resizeMultipleElements = (
         startBinding?: ExcalidrawElbowArrowElement["startBinding"];
         endBinding?: ExcalidrawElbowArrowElement["endBinding"];
         fixedSegments?: ExcalidrawElbowArrowElement["fixedSegments"];
-      };
+      } & Partial<
+          Pick<
+            ExcalidrawTableElement,
+            "columnWidths" | "rowBaseHeights" | "rowHeights"
+          >
+        >;
     }[] = [];
 
     for (const { orig, latest } of targetElements) {
@@ -1442,8 +1469,23 @@ export const resizeMultipleElements = (
         continue;
       }
 
-      const width = orig.width * scaleX;
-      const height = orig.height * scaleY;
+      let width = orig.width * scaleX;
+      let height = orig.height * scaleY;
+      let tableGrid: ReturnType<typeof getResizedTableGrid>["grid"] | null =
+        null;
+      if (isTableElement(orig) && isTableElement(latest)) {
+        const resized = getResizedTableGrid(
+          orig,
+          latest,
+          width,
+          height,
+          scene.getVariables().map,
+          renderEnvironment,
+        );
+        width = resized.width;
+        height = resized.height;
+        tableGrid = resized.grid;
+      }
       const angle = normalizeRadians(
         (orig.angle * flipFactorX * flipFactorY) as Radians,
       );
@@ -1471,6 +1513,7 @@ export const resizeMultipleElements = (
         height,
         angle,
         ...rescaledPoints,
+        ...tableGrid,
       };
 
       if (isElbowArrow(orig)) {

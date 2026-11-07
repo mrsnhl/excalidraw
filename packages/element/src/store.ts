@@ -98,6 +98,11 @@ export class Store {
 
   constructor(private readonly app: App) {}
 
+  /** whether there are micro actions to be executed on the next commit */
+  public get hasScheduledMicroActions() {
+    return this.scheduledMicroActions.length > 0;
+  }
+
   public scheduleAction(action: CaptureUpdateActionType) {
     this.scheduledMacroActions.add(action);
     this.satisfiesScheduledActionsInvariant();

@@ -1,6 +1,7 @@
 import { getFontString } from "@excalidraw/common";
 
 import {
+  getResolvedOriginalText,
   getTextAnchorRatios,
   isExcalidrawElement,
   isNonDeletedElement,
@@ -48,11 +49,8 @@ export const actionTextAutoResize = register({
       return false;
     }
 
-    const metrics = measureText(
-      target.originalText,
-      getFontString(target),
-      target.lineHeight,
-    );
+    const text = getResolvedOriginalText(target, app.scene.getVariables().map);
+    const metrics = measureText(text, getFontString(target), target.lineHeight);
 
     // unwrapping resizes the box, so keep the point the text's alignment pins
     // — otherwise a right-aligned or centred text slides sideways, and one
@@ -65,7 +63,7 @@ export const actionTextAutoResize = register({
       height: metrics.height,
       x: target.x + (target.width - metrics.width) * anchor.x,
       y: target.y + (target.height - metrics.height) * anchor.y,
-      text: target.originalText,
+      text,
     });
 
     // the anchor only pins one point of the box, so any other arrow bound to

@@ -510,6 +510,16 @@ export {
 
 export { elementsOverlappingBBox } from "@excalidraw/element";
 
+export {
+  isValidVariableName,
+  isVariableElement,
+  newVariableElement,
+  parseVariableReferences,
+  resolveVariables,
+} from "@excalidraw/element";
+export type { VariableMap } from "@excalidraw/element";
+export type { ExcalidrawVariableElement } from "@excalidraw/element/types";
+
 export { DiagramToCodePlugin } from "./components/DiagramToCodePlugin/DiagramToCodePlugin";
 export { getDataURL } from "./data/blob";
 export { isElementLink } from "@excalidraw/element";

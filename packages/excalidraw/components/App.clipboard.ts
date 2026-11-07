@@ -21,6 +21,7 @@ import {
   maybeParseEmbedSrc,
   measureText,
   newElementWith,
+  newTableElementFromCells,
   newTextElement,
   normalizeText,
   wrapText,
@@ -35,7 +36,7 @@ import type {
 } from "@excalidraw/element/types";
 
 import { actionCopy, actionCut } from "../actions";
-import { tryParseSpreadsheet } from "../charts";
+import { tryParseSpreadsheet, tryParseTable } from "../charts";
 import { parseClipboard, parseDataTransferEvent } from "../clipboard";
 import { ImageURLToFile, SVGStringToFile } from "../data/blob";
 import { t } from "../i18n";
@@ -155,6 +156,37 @@ export class AppClipboard {
         });
         return;
       }
+
+      // tab-separated text is a spreadsheet selection; comma or semicolon
+      // text is too often prose to convert without asking
+      const table = tryParseTable(data.text);
+      if (table.ok && table.delimiter === "\t") {
+        this.app.addElementsFromPasteOrLibrary({
+          elements: [
+            newTableElementFromCells({
+              cells: table.cells,
+              x: 0,
+              y: 0,
+              strokeColor: this.app.state.currentItemStrokeColor,
+              backgroundColor: this.app.state.currentItemBackgroundColor,
+              fillStyle: this.app.state.currentItemFillStyle,
+              strokeWidth: this.app.getCurrentItemStrokeWidth("table"),
+              strokeStyle: this.app.state.currentItemStrokeStyle,
+              roughness: this.app.state.currentItemRoughness,
+              opacity: this.app.state.currentItemOpacity,
+              roundness: this.app.getCurrentItemRoundness("table"),
+              variables: this.app.scene.getVariables().map,
+              renderEnvironment: this.app.renderEnvironment,
+            }),
+          ],
+          files: null,
+          position:
+            this.app.editorInterface.formFactor === "desktop"
+              ? "cursor"
+              : "center",
+        });
+        return;
+      }
     }
 
     // ------------------- Images or SVG code -------------------
@@ -191,6 +223,7 @@ export class AppClipboard {
       // TODO: remove formatting from elements if isPlainPaste
       this.app.addElementsFromPasteOrLibrary({
         elements,
+        variables: data.variables,
         files: data.files || null,
         position:
           this.app.editorInterface.formFactor === "desktop"

@@ -34,6 +34,12 @@ import {
   type StrokeWidthKey,
   isTransparent,
   DEFAULT_ZOOM,
+  hasVariablePlaceholders,
+  isValidVariableName,
+  DEFAULT_TABLE_COLUMN_WIDTH,
+  DEFAULT_TABLE_ROW_HEIGHT,
+  MIN_TABLE_COLUMN_WIDTH,
+  MIN_TABLE_ROW_HEIGHT,
 } from "@excalidraw/common";
 import {
   calculateFixedPointForNonElbowArrowBinding,
@@ -93,6 +99,7 @@ import type {
   ExcalidrawBindableElement,
   ExcalidrawElbowArrowElement,
   ExcalidrawElement,
+  ExcalidrawTableElement,
   ExcalidrawLinearElement,
   ExcalidrawSelectionElement,
   ExcalidrawTextElement,
@@ -232,6 +239,7 @@ export const AllowedExcalidrawActiveTools: Record<
   arrow: true,
   freedraw: true,
   stickynote: true,
+  table: true,
   eraser: false,
   custom: true,
   frame: true,
@@ -538,6 +546,70 @@ const restoreElementWithProperties = <
   return ret;
 };
 
+const sumNumbers = (values: readonly number[]) =>
+  values.reduce((total, value) => total + value, 0);
+
+/**
+ * Makes the table grid rectangular: cells are strings, and there is exactly
+ * one width per column and one height per row (missing ones are defaulted).
+ */
+const restoreTableGrid = (element: ExcalidrawTableElement) => {
+  const rawCells: unknown[] = Array.isArray(element.cells) ? element.cells : [];
+  const rows = Math.max(
+    1,
+    rawCells.length,
+    element.rowBaseHeights?.length ?? 0,
+    element.rowHeights?.length ?? 0,
+  );
+  const columns = Math.max(
+    1,
+    element.columnWidths?.length ?? 0,
+    ...rawCells.map((row) => (Array.isArray(row) ? row.length : 0)),
+  );
+
+  const cells = Array.from({ length: rows }, (_, row) => {
+    const rawRow: unknown[] = Array.isArray(rawCells[row]) ? rawCells[row] : [];
+    return Array.from({ length: columns }, (_, col) => {
+      const value = rawRow[col];
+      return typeof value === "string"
+        ? value
+        : value == null
+        ? ""
+        : String(value);
+    });
+  });
+
+  const sizes = (
+    values: readonly number[] | undefined,
+    count: number,
+    min: number,
+    fallback: number,
+  ) =>
+    Array.from({ length: count }, (_, index) => {
+      const value = values?.[index];
+      return isFiniteNumber(value) ? Math.max(min, value) : fallback;
+    });
+
+  const columnWidths = sizes(
+    element.columnWidths,
+    columns,
+    MIN_TABLE_COLUMN_WIDTH,
+    DEFAULT_TABLE_COLUMN_WIDTH,
+  );
+  const rowBaseHeights = sizes(
+    element.rowBaseHeights,
+    rows,
+    MIN_TABLE_ROW_HEIGHT,
+    DEFAULT_TABLE_ROW_HEIGHT,
+  );
+  // laid-out heights are never smaller than the base
+  const rowHeights = rowBaseHeights.map((base, row) =>
+    Math.max(base, element.rowHeights?.[row] ?? 0),
+  );
+
+  return { cells, columnWidths, rowBaseHeights, rowHeights };
+};
+
 export const restoreElement = (
   /** element to be restored */
   element: Exclude<ExcalidrawElement, ExcalidrawSelectionElement>,
@@ -596,7 +668,13 @@ export const restoreElement = (
 
       // if empty text, mark as deleted. We keep in array
       // for data integrity purposes (collab etc.)
-      if (opts?.deleteInvisibleElements && !text && !element.isDeleted) {
+      if (
+        opts?.deleteInvisibleElements &&
+        !text &&
+        // text referencing variables may legitimately resolve to nothing
+        !hasVariablePlaceholders(element.originalText) &&
+        !element.isDeleted
+      ) {
         // TODO: we should not do this since it breaks sync / versioning when we exchange / apply just deltas and restore the elements (deletion isn't recorded)
         element = { ...element, originalText: text, isDeleted: true };
         element = bumpVersion(element);
@@ -752,11 +830,59 @@ export const restoreElement = (
             element.height,
         }),
       );
+    case "table": {
+      const { cells, columnWidths, rowBaseHeights, rowHeights } =
+        restoreTableGrid(element);
+      const fontFamily = element.fontFamily ?? DEFAULT_FONT_FAMILY;
+      return {
+        ...restoreElementWithProperties(element, {
+          cells,
+          columnWidths,
+          rowBaseHeights,
+          rowHeights,
+          fontSize: isFiniteNumber(element.fontSize)
+            ? element.fontSize
+            : DEFAULT_FONT_SIZE,
+          fontFamily,
+          lineHeight: element.lineHeight || getLineHeight(fontFamily),
+          textAlign: element.textAlign || DEFAULT_TEXT_ALIGN,
+          verticalAlign: element.verticalAlign || DEFAULT_VERTICAL_ALIGN,
+          headerRow: element.headerRow === true,
+        }),
+        width: sumNumbers(columnWidths),
+        height: sumNumbers(rowHeights),
+      };
+    }
     case "magicframe":
     case "frame":
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
       });
+    case "variable": {
+      if (
+        typeof element.name !== "string" ||
+        !isValidVariableName(element.name)
+      ) {
+        return null;
+      }
+      return {
+        ...restoreElementWithProperties(element, {
+          name: element.name,
+          value: String(element.value ?? ""),
+          x: 0,
+          y: 0,
+        }),
+        // variables are hidden and have no geometry
+        width: 0,
+        height: 0,
+        angle: 0 as Radians,
+        groupIds: [],
+        frameId: null,
+        boundElements: null,
+        locked: false,
+        link: null,
+      };
+    }
 
     // Don't use default case so as to catch a missing an element type case.
     // We also don't want to throw, but instead return void so we filter

@@ -41,6 +41,7 @@ import { getLineWidth } from "@excalidraw/element";
 import { normalizeText } from "@excalidraw/element";
 import { wrapText } from "@excalidraw/element";
 import { getWrappedTextLines } from "@excalidraw/element";
+import { getWinningVariableElements } from "@excalidraw/element";
 import {
   isArrowElement,
   isBoundToContainer,
@@ -72,6 +73,8 @@ import {
   actionZoomIn,
   actionZoomOut,
 } from "../actions/actionCanvas";
+
+import { attachVariableAutocomplete } from "../components/VariableAutocomplete";
 
 import type { ParsedDataTranferList } from "../clipboard";
 
@@ -567,6 +570,12 @@ export const textWysiwyg = ({
     boxSizing: "content-box",
   });
   editable.value = element.originalText;
+
+  // suggests the variables when a `{{` is typed
+  const detachVariableAutocomplete = attachVariableAutocomplete(editable, {
+    getVariables: () =>
+      getWinningVariableElements(app.scene.getVariableElements()),
+  });
   updateWysiwygStyle();
 
   const getCaretIndexFromInitialSceneCoords = () => {
@@ -1093,6 +1102,7 @@ export const textWysiwyg = ({
     editable.onblur = null;
     editable.oninput = null;
     editable.onkeydown = null;
+    detachVariableAutocomplete();
 
     if (observer) {
       observer.disconnect();

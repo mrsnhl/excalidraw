@@ -4,6 +4,7 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -656,6 +657,71 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
+        "PanelComponent": [Function],
+        "label": "labels.tableHeaderRow",
+        "name": "toggleTableHeaderRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowAbove",
+        "name": "tableInsertRowAbove",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowBelow",
+        "name": "tableInsertRowBelow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnLeft",
+        "name": "tableInsertColumnLeft",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnRight",
+        "name": "tableInsertColumnRight",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteRow",
+        "name": "tableDeleteRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteColumn",
+        "name": "tableDeleteColumn",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -941,6 +1007,7 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -1092,6 +1159,7 @@ exports[`contextMenu element > selecting 'Add to library' in context menu adds e
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -1155,6 +1223,7 @@ exports[`contextMenu element > selecting 'Add to library' in context menu adds e
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -1321,6 +1390,7 @@ exports[`contextMenu element > selecting 'Bring forward' in context menu brings 
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -1384,6 +1454,7 @@ exports[`contextMenu element > selecting 'Bring forward' in context menu brings 
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -1669,6 +1740,7 @@ exports[`contextMenu element > selecting 'Bring to front' in context menu brings
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -1732,6 +1804,7 @@ exports[`contextMenu element > selecting 'Bring to front' in context menu brings
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -2017,6 +2090,7 @@ exports[`contextMenu element > selecting 'Copy styles' in context menu copies st
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -2080,6 +2154,7 @@ exports[`contextMenu element > selecting 'Copy styles' in context menu copies st
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -2246,6 +2321,7 @@ exports[`contextMenu element > selecting 'Delete' in context menu deletes elemen
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -2309,6 +2385,7 @@ exports[`contextMenu element > selecting 'Delete' in context menu deletes elemen
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -2502,6 +2579,7 @@ exports[`contextMenu element > selecting 'Duplicate' in context menu duplicates 
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -2565,6 +2643,7 @@ exports[`contextMenu element > selecting 'Duplicate' in context menu duplicates 
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -2817,6 +2896,7 @@ exports[`contextMenu element > selecting 'Group selection' in context menu group
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -2880,6 +2960,7 @@ exports[`contextMenu element > selecting 'Group selection' in context menu group
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -3206,6 +3287,7 @@ exports[`contextMenu element > selecting 'Paste styles' in context menu pastes s
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -3269,6 +3351,7 @@ exports[`contextMenu element > selecting 'Paste styles' in context menu pastes s
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -3743,6 +3826,7 @@ exports[`contextMenu element > selecting 'Send backward' in context menu sends e
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -3806,6 +3890,7 @@ exports[`contextMenu element > selecting 'Send backward' in context menu sends e
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -4083,6 +4168,7 @@ exports[`contextMenu element > selecting 'Send to back' in context menu sends el
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -4146,6 +4232,7 @@ exports[`contextMenu element > selecting 'Send to back' in context menu sends el
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -4423,6 +4510,7 @@ exports[`contextMenu element > selecting 'Ungroup selection' in context menu ung
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -4486,6 +4574,7 @@ exports[`contextMenu element > selecting 'Ungroup selection' in context menu ung
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -4851,6 +4940,7 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -5503,6 +5593,71 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
+        "PanelComponent": [Function],
+        "label": "labels.tableHeaderRow",
+        "name": "toggleTableHeaderRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowAbove",
+        "name": "tableInsertRowAbove",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowBelow",
+        "name": "tableInsertRowBelow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnLeft",
+        "name": "tableInsertColumnLeft",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnRight",
+        "name": "tableInsertColumnRight",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteRow",
+        "name": "tableDeleteRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteColumn",
+        "name": "tableDeleteColumn",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -5788,6 +5943,7 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -6085,6 +6241,7 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -6737,6 +6894,71 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
+        "PanelComponent": [Function],
+        "label": "labels.tableHeaderRow",
+        "name": "toggleTableHeaderRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowAbove",
+        "name": "tableInsertRowAbove",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowBelow",
+        "name": "tableInsertRowBelow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnLeft",
+        "name": "tableInsertColumnLeft",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnRight",
+        "name": "tableInsertColumnRight",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteRow",
+        "name": "tableDeleteRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteColumn",
+        "name": "tableDeleteColumn",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7022,6 +7244,7 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -7370,6 +7593,7 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -7996,6 +8220,7 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -8072,6 +8297,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -8718,6 +8944,71 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "label": "labels.bringToFront",
         "name": "bringToFront",
         "perform": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
+        "PanelComponent": [Function],
+        "label": "labels.tableHeaderRow",
+        "name": "toggleTableHeaderRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowAbove",
+        "name": "tableInsertRowAbove",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowBelow",
+        "name": "tableInsertRowBelow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnLeft",
+        "name": "tableInsertColumnLeft",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnRight",
+        "name": "tableInsertColumnRight",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteRow",
+        "name": "tableDeleteRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteColumn",
+        "name": "tableDeleteColumn",
+        "perform": [Function],
+        "predicate": [Function],
         "trackEvent": {
           "category": "element",
         },
@@ -9009,6 +9300,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,
@@ -9076,6 +9368,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
 {
   "activeEmbeddable": null,
   "activeLockedId": null,
+  "activeTableCell": null,
   "activeTool": {
     "customType": null,
     "fromSelection": false,
@@ -9728,6 +10021,71 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
+        "PanelComponent": [Function],
+        "label": "labels.tableHeaderRow",
+        "name": "toggleTableHeaderRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowAbove",
+        "name": "tableInsertRowAbove",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertRowBelow",
+        "name": "tableInsertRowBelow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnLeft",
+        "name": "tableInsertColumnLeft",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableInsertColumnRight",
+        "name": "tableInsertColumnRight",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteRow",
+        "name": "tableDeleteRow",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "label": "labels.tableDeleteColumn",
+        "name": "tableDeleteColumn",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10013,6 +10371,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
   "gridStep": 5,
   "height": 100,
   "hoveredElementIds": {},
+  "hoveredTableControl": null,
   "inputDevice": "auto",
   "isBindingEnabled": true,
   "isCropping": false,

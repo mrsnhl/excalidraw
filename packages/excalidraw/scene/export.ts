@@ -15,6 +15,7 @@ import {
   toBrandedType,
   applyDarkModeFilter,
   removeDarkModeFilter,
+  type VariableMap,
 } from "@excalidraw/common";
 
 import { getCommonBounds, getElementAbsoluteCoords } from "@excalidraw/element";
@@ -28,6 +29,8 @@ import {
 } from "@excalidraw/element";
 
 import { newElementWith } from "@excalidraw/element";
+
+import { buildVariableMap, isVariableElement } from "@excalidraw/element";
 
 import { isFrameLikeElement } from "@excalidraw/element";
 
@@ -356,6 +359,12 @@ type ExportSceneBaseConfig = {
    * @default { name: true, outline: true, clip: true }
    */
   frames?: { name?: boolean; outline?: boolean; clip?: boolean };
+  /**
+   * Scene variables that `{{name}}` placeholders in table cells resolve to.
+   *
+   * @default empty (placeholders are exported as written)
+   */
+  variables?: VariableMap;
 };
 
 /**
@@ -568,9 +577,17 @@ const configExportDimension = async ({
   // deleted ones. The type contract requires non-deleted elements already,
   // but types alone don't protect JS consumers passing raw scene data.
   // These are also what SVG export embeds (`embedScene`).
-  const elements = getNonDeletedElements(
-    restoreElements(data.elements, null, { deleteInvisibleElements: true }),
+  const restoredElements = restoreElements(data.elements, null, {
+    deleteInvisibleElements: true,
+  });
+  const elements = getNonDeletedElements(restoredElements);
+  // never drawn, but embedding the scene keeps them, so that the
+  // placeholders still work when it's opened again
+  const variableElements = restoredElements.filter(
+    (element) => isVariableElement(element) && !element.isDeleted,
   );
+  // without explicit variables, table cells resolve against the scene's own
+  cfg.variables ??= buildVariableMap(variableElements).map;
 
   // initialize defaults
   // ---------------------------------------------------------------------------
@@ -673,7 +690,7 @@ const configExportDimension = async ({
   if (cfg.environment?.loadFonts) {
     await cfg.environment.loadFonts();
   } else {
-    await Fonts.loadElementsFonts(elements);
+    await Fonts.loadElementsFonts(elements, undefined, cfg.variables);
   }
 
   // value used to scale the canvas context. By default, we use this to
@@ -814,6 +831,7 @@ const configExportDimension = async ({
     // the restored & non-deleted-filtered elements — use these (not
     // `data.elements`) for all rendering purposes
     elements,
+    variableElements,
     normalizedPadding,
     contentWidth: width,
     contentHeight: height,
@@ -925,6 +943,8 @@ const exportToCanvas = async ({
       elementsPendingErasure: new Set(),
       pendingFlowchartNodes: null,
       theme,
+      variables: cfg.variables ?? new Map(),
+      variablesVersion: "",
     },
   });
 
@@ -944,6 +964,7 @@ type ExportToSvgConfig = Pick<
   | "scale"
   | "frames"
   | "environment"
+  | "variables"
 > &
   ExportSizeConfig & {
     /**
@@ -989,6 +1010,7 @@ const exportToSvg = async ({
   const {
     config: cfg,
     elements,
+    variableElements,
     normalizedPadding,
     exportWidth,
     exportHeight,
@@ -1048,7 +1070,12 @@ const exportToSvg = async ({
         // keeps the ids stable. But it also requires that the exportToSvg is
         // being supplied with only the elements that we're exporting, and
         // no extra.
-        payload: serializeAsJSON(elements, appState, data.files || {}, "local"),
+        payload: serializeAsJSON(
+          [...elements, ...variableElements],
+          appState,
+          data.files || {},
+          "local",
+        ),
       });
     } catch (error: any) {
       console.error(error);
@@ -1107,7 +1134,7 @@ const exportToSvg = async ({
 
   const fontFaces =
     config?.skipInliningFonts !== true
-      ? await Fonts.generateFontFaceDeclarations(elements)
+      ? await Fonts.generateFontFaceDeclarations(elements, cfg.variables)
       : [];
 
   const delimiter = "\n      "; // 6 spaces
@@ -1179,6 +1206,7 @@ const exportToSvg = async ({
         : new Map(),
       reuseImages: config?.reuseImages ?? true,
       theme,
+      variables: cfg.variables,
     },
   );
 
@@ -1394,9 +1422,13 @@ export const exportToClipboard = async (
   } else if (opts.type === "png") {
     await copyBlobToClipboardAsPng(exportScene(opts));
   } else if (opts.type === "json") {
+    const restoredElements = restoreElements(opts.data.elements, null);
     await copyToClipboard(
-      getNonDeletedElements(restoreElements(opts.data.elements, null)),
+      getNonDeletedElements(restoredElements),
       opts.data.files ?? null,
+      null,
+      // the scene's variables come in as (hidden) elements
+      buildVariableMap(restoredElements).map,
     );
   } else {
     throw new Error("Invalid export type");

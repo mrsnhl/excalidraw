@@ -8,6 +8,7 @@ import {
   isElbowArrow,
   isImageElement,
   isLinearElement,
+  isTableElement,
   isTextElement,
   hasStrokeColor,
   toolIsArrow,
@@ -148,10 +149,15 @@ export const getShapeActionPredicates = (
     arrowheads: forToolOrSelection(canHaveArrowheads),
 
     // text
-    text: activeToolType === "text" || targetElements.some(isTextElement),
+    text:
+      activeToolType === "text" ||
+      targetElements.some(
+        (element) => isTextElement(element) || isTableElement(element),
+      ),
     textAlign:
       activeToolType === "text" ||
       suppportsHorizontalAlign(targetElements, elementsMap),
+    tableHeaderRow: targetElements.some(isTableElement),
     verticalAlign: shouldAllowVerticalAlign(targetElements, elementsMap),
 
     opacity: activeToolType !== "autoshape" || hasSelection,

@@ -4,6 +4,10 @@ import {
   DEFAULT_FONT_SIZE,
   DEFAULT_TEXT_ALIGN,
   DEFAULT_STICKY_NOTE_SIZE,
+  DEFAULT_TABLE_COLUMN_WIDTH,
+  DEFAULT_TABLE_COLUMNS,
+  DEFAULT_TABLE_ROW_HEIGHT,
+  DEFAULT_TABLE_ROWS,
   STICKY_NOTE_MIN_SIZE,
   DEFAULT_VERTICAL_ALIGN,
   DEFAULT_STROKE_STREAMLINE,
@@ -58,6 +62,8 @@ import type {
   ExcalidrawElbowArrowElement,
   ExcalidrawLineElement,
   ExcalidrawStickyNoteElement,
+  ExcalidrawVariableElement,
+  ExcalidrawTableElement,
 } from "./types";
 
 export type ElementConstructorOpts = MarkOptional<
@@ -244,6 +250,59 @@ export const newStickyNoteElement = (
   });
 };
 
+export const newTableElement = (
+  opts: {
+    type: "table";
+    rows?: number;
+    columns?: number;
+    /** overrides rows/columns when given */
+    cells?: readonly (readonly string[])[];
+    columnWidths?: readonly number[];
+    rowBaseHeights?: readonly number[];
+    fontSize?: number;
+    fontFamily?: FontFamilyValues;
+    lineHeight?: ExcalidrawTextElement["lineHeight"];
+    textAlign?: TextAlign;
+    verticalAlign?: VerticalAlign;
+    headerRow?: boolean;
+  } & ElementConstructorOpts,
+): NonDeleted<ExcalidrawTableElement> => {
+  const rows = opts.cells?.length ?? opts.rows ?? DEFAULT_TABLE_ROWS;
+  const columns =
+    opts.cells?.[0]?.length ?? opts.columns ?? DEFAULT_TABLE_COLUMNS;
+  const fontSize = opts.fontSize ?? DEFAULT_FONT_SIZE;
+  const fontFamily = opts.fontFamily ?? DEFAULT_FONT_FAMILY;
+  const columnWidths =
+    opts.columnWidths ??
+    Array.from({ length: columns }, () => DEFAULT_TABLE_COLUMN_WIDTH);
+  const rowBaseHeights =
+    opts.rowBaseHeights ??
+    Array.from({ length: rows }, () => DEFAULT_TABLE_ROW_HEIGHT);
+  const cells =
+    opts.cells ??
+    Array.from({ length: rows }, () =>
+      Array.from({ length: columns }, () => ""),
+    );
+
+  const base = _newElementBase<ExcalidrawTableElement>("table", opts);
+  const element: ExcalidrawTableElement = {
+    ...base,
+    cells,
+    columnWidths,
+    rowBaseHeights,
+    rowHeights: rowBaseHeights,
+    fontSize,
+    fontFamily,
+    lineHeight: opts.lineHeight ?? getLineHeight(fontFamily),
+    textAlign: opts.textAlign ?? "left",
+    verticalAlign: opts.verticalAlign ?? VERTICAL_ALIGN.MIDDLE,
+    headerRow: opts.headerRow ?? false,
+    width: columnWidths.reduce((a, b) => a + b, 0),
+    height: rowBaseHeights.reduce((a, b) => a + b, 0),
+  };
+  return element as NonDeleted<ExcalidrawTableElement>;
+};
+
 export const newEmbeddableElement = (
   opts: {
     type: "embeddable";
@@ -294,6 +353,37 @@ export const newMagicFrameElement = (
   );
 
   return frameElement;
+};
+
+export const newVariableElement = (
+  opts: {
+    name: string;
+    value: string;
+  } & MarkOptional<ElementConstructorOpts, "x" | "y">,
+): NonDeleted<ExcalidrawVariableElement> => {
+  const { name, value, ...rest } = opts;
+  return newElementWith(
+    {
+      ..._newElementBase<ExcalidrawVariableElement>("variable", {
+        ...rest,
+        // variables are not part of the visual scene
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        angle: 0 as Radians,
+        groupIds: [],
+        frameId: null,
+        boundElements: null,
+        locked: false,
+        link: null,
+      }),
+      type: "variable",
+      name,
+      value,
+    },
+    {},
+  );
 };
 
 /**

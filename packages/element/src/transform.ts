@@ -52,9 +52,11 @@ import {
   newImageElement,
   newLinearElement,
   newMagicFrameElement,
+  newVariableElement,
   newTextElement,
   type ElementConstructorOpts,
   newStickyNoteElement,
+  newTableElement,
   normalizeStickyNoteGeometry,
 } from "./newElement";
 import { normalizeStickyNoteStrokeColor } from "./stickyNote";
@@ -95,6 +97,7 @@ import type {
   ExcalidrawImageElement,
   ExcalidrawLinearElement,
   ExcalidrawMagicFrameElement,
+  ExcalidrawVariableElement,
   ExcalidrawSelectionElement,
   ExcalidrawTextElement,
   FileId,
@@ -107,6 +110,7 @@ import type {
   TextAlign,
   VerticalAlign,
   ExcalidrawStickyNoteElement,
+  ExcalidrawTableElement,
 } from "./types";
 
 /**
@@ -243,6 +247,27 @@ export type ValidStickyNote = {
 } & ElementConstructorOpts &
   Partial<Pick<ExcalidrawStickyNoteElement, "baseHeight">>;
 
+/** A table: `cells` sets the grid size, otherwise `rows` x `columns` empty cells. */
+export type ValidTable = {
+  type: "table";
+  id?: ExcalidrawTableElement["id"];
+  rows?: number;
+  columns?: number;
+} & ElementConstructorOpts &
+  Partial<
+    Pick<
+      ExcalidrawTableElement,
+      | "cells"
+      | "columnWidths"
+      | "rowBaseHeights"
+      | "fontSize"
+      | "fontFamily"
+      | "textAlign"
+      | "verticalAlign"
+      | "headerRow"
+    >
+  >;
+
 export type ExcalidrawElementSkeleton =
   | Extract<
       Exclude<ExcalidrawElement, ExcalidrawSelectionElement>,
@@ -255,6 +280,7 @@ export type ExcalidrawElementSkeleton =
     } & Partial<ExcalidrawLinearElement>)
   | ValidContainer
   | ValidStickyNote
+  | ValidTable
   | ValidLinearElement
   | ({
       type: "text";
@@ -278,7 +304,12 @@ export type ExcalidrawElementSkeleton =
       type: "magicframe";
       children: readonly ExcalidrawElement["id"][];
       name?: string;
-    } & Partial<ExcalidrawMagicFrameElement>);
+    } & Partial<ExcalidrawMagicFrameElement>)
+  | ({
+      type: "variable";
+      name: string;
+      value?: string;
+    } & Partial<Omit<ExcalidrawVariableElement, "name" | "value">>);
 
 const DEFAULT_LINEAR_ELEMENT_PROPS = {
   width: 100,
@@ -798,6 +829,15 @@ export const convertToExcalidrawElements = (
         });
         break;
       }
+      case "variable": {
+        const { name, value, ...rest } = element;
+        excalidrawElement = newVariableElement({
+          ...rest,
+          name,
+          value: value ?? "",
+        });
+        break;
+      }
       case "freedraw": {
         excalidrawElement = newFreeDrawElement({ ...element });
         break;
@@ -820,6 +860,10 @@ export const convertToExcalidrawElements = (
             baseHeight: element.baseHeight ?? height,
           }),
         );
+        break;
+      }
+      case "table": {
+        excalidrawElement = newTableElement({ ...element, type: "table" });
         break;
       }
       case "embeddable": {

@@ -18,6 +18,7 @@ import {
   isArrowElement,
   isFreeDrawElement,
   isLinearElement,
+  isVariableElement,
 } from "./typeChecks";
 
 import type { ElementsMap, ExcalidrawElement } from "./types";
@@ -61,6 +62,11 @@ export const INVISIBLY_SMALL_ELEMENT_SIZE = 0.1;
 export const isInvisiblySmallElement = (
   element: ExcalidrawElement,
 ): boolean => {
+  // variables are hidden, zero-sized by design, but must be persisted & synced
+  if (isVariableElement(element)) {
+    return false;
+  }
+
   if (isLinearElement(element) || isFreeDrawElement(element)) {
     return (
       element.points.length < 2 ||

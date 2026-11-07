@@ -19,6 +19,7 @@ import {
   actionClearCanvas,
   actionLink,
   actionToggleSearchMenu,
+  actionToggleVariablesMenu,
   actionToggleTheme,
 } from "../../actions";
 import {
@@ -45,6 +46,7 @@ import {
   LockedIcon,
   UnlockedIcon,
   searchIcon,
+  variablesIcon,
   boltIcon,
   bucketFillIcon,
   ExportImageIcon,
@@ -450,6 +452,16 @@ function CommandPaletteInner({
           viewMode: true,
           perform: () => {
             actionManager.executeAction(actionToggleSearchMenu);
+          },
+        },
+        {
+          label: t("variables.title"),
+          category: DEFAULT_CATEGORIES.app,
+          icon: variablesIcon,
+          viewMode: true,
+          keywords: ["variables", "placeholder", "token"],
+          perform: () => {
+            actionManager.executeAction(actionToggleVariablesMenu);
           },
         },
         {

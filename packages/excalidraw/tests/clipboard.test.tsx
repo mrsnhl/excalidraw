@@ -15,6 +15,8 @@ import {
 
 import { getElementBounds } from "@excalidraw/element";
 
+import { CaptureUpdateAction } from "@excalidraw/element";
+
 import type { ExcalidrawTextElement } from "@excalidraw/element/types";
 
 import { createPasteEvent, serializeAsClipboardJSON } from "../clipboard";
@@ -25,6 +27,7 @@ import { API } from "./helpers/api";
 import { mockMermaidToExcalidraw } from "./helpers/mocks";
 import { Pointer, Keyboard } from "./helpers/ui";
 import {
+  act,
   render,
   waitFor,
   GlobalTestState,
@@ -942,5 +945,116 @@ describe("paste routing", () => {
         "world",
       ]);
     });
+  });
+});
+
+describe("scene variables", () => {
+  const price = () =>
+    API.createElement({ type: "variable", name: "price", value: "$12" });
+  const unrelated = () =>
+    API.createElement({ type: "variable", name: "other", value: "x" });
+  const priceText = () =>
+    API.createElement({ type: "text", text: "{{price}}" });
+
+  it("copies only the variables the elements refer to, by name and value", async () => {
+    const variables = new Map([
+      ["price", "$12"],
+      ["other", "x"],
+    ]);
+    const json = JSON.parse(
+      await serializeAsClipboardJSON({
+        elements: [price(), unrelated(), priceText()],
+        files: null,
+        variables,
+      }),
+    );
+    expect(json.variables).toEqual([{ name: "price", value: "$12" }]);
+    // (they don't travel as elements)
+    expect(json.elements.map((element: any) => element.type)).toEqual(["text"]);
+  });
+
+  it("omits the list when nothing refers to a variable", async () => {
+    const json = JSON.parse(
+      await serializeAsClipboardJSON({
+        elements: [API.createElement({ type: "rectangle" })],
+        files: null,
+        variables: new Map([["price", "$12"]]),
+      }),
+    );
+    expect(json.variables).toBeUndefined();
+  });
+
+  it("creates the variables the scene is missing on paste", async () => {
+    const json = await serializeAsClipboardJSON({
+      elements: [priceText()],
+      files: null,
+      variables: new Map([["price", "$12"]]),
+    });
+    pasteWithCtrlCmdV(json);
+
+    await waitFor(() => {
+      expect(h.elements.filter((el) => el.type === "text")).toHaveLength(1);
+    });
+    expect(h.app.variables.get()).toEqual({ price: "$12" });
+    const pasted = h.elements.find((el) => el.type === "text") as any;
+    expect(pasted.originalText).toBe("{{price}}");
+    expect(pasted.text).toBe("$12");
+  });
+
+  it("keeps the target's value for a name it already has", async () => {
+    API.updateScene({
+      elements: [price()],
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+    const json = await serializeAsClipboardJSON({
+      elements: [priceText()],
+      files: null,
+      variables: new Map([["price", "$999"]]),
+    });
+    pasteWithCtrlCmdV(json);
+
+    await waitFor(() => {
+      expect(h.elements.filter((el) => el.type === "text")).toHaveLength(1);
+    });
+    expect(h.app.variables.get()).toEqual({ price: "$12" });
+    expect(h.app.scene.getVariableElements()).toHaveLength(1);
+    expect((h.elements.find((el) => el.type === "text") as any).text).toBe(
+      "$12",
+    );
+  });
+
+  it("ignores variable elements and malformed entries in what's pasted", async () => {
+    const json = JSON.parse(
+      await serializeAsClipboardJSON({
+        elements: [priceText()],
+        files: null,
+      }),
+    );
+    json.elements.push(price());
+    json.variables = [
+      { name: "price", value: "$12" },
+      { name: "bad name", value: "x" },
+      { name: "num", value: 4 },
+      null,
+    ];
+    pasteWithCtrlCmdV(JSON.stringify(json));
+
+    await waitFor(() => {
+      expect(h.elements.filter((el) => el.type === "text")).toHaveLength(1);
+    });
+    expect(h.app.variables.get()).toEqual({ price: "$12" });
+    expect(h.app.scene.getVariableElements()).toHaveLength(1);
+  });
+
+  it("does not carry variables in library items", () => {
+    act(() => {
+      h.app.addElementsFromPasteOrLibrary({
+        elements: [price(), priceText()],
+        files: null,
+        position: "center",
+      });
+    });
+    expect(h.app.scene.getVariableElements()).toHaveLength(0);
+    expect(h.elements.filter((el) => el.type === "text")).toHaveLength(1);
   });
 });

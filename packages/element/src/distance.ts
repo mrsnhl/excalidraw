@@ -33,9 +33,12 @@ export const distanceToElement = (
   p: GlobalPoint,
 ): number => {
   switch (element.type) {
+    case "variable":
+      return Infinity;
     case "selection":
     case "rectangle":
     case "stickynote":
+    case "table":
     case "image":
     case "text":
     case "iframe":

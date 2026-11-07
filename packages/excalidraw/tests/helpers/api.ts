@@ -23,7 +23,9 @@ import {
   newLinearElement,
   newMagicFrameElement,
   newStickyNoteElement,
+  newTableElement,
   newTextElement,
+  newVariableElement,
 } from "@excalidraw/element";
 
 import { isUsingAdaptiveRadius, getSelectedElements } from "@excalidraw/element";
@@ -45,6 +47,8 @@ import type {
   ExcalidrawElbowArrowElement,
   ExcalidrawArrowElement,
   ExcalidrawStickyNoteElement,
+  ExcalidrawVariableElement,
+  ExcalidrawTableElement,
   FixedSegment,
   NonDeleted,
   NonDeletedExcalidrawElement,
@@ -201,13 +205,30 @@ export class API {
     opacity?: ExcalidrawGenericElement["opacity"];
     // text props
     text?: T extends "text" ? ExcalidrawTextElement["text"] : never;
-    fontSize?: T extends "text" ? ExcalidrawTextElement["fontSize"] : never;
-    fontFamily?: T extends "text" ? ExcalidrawTextElement["fontFamily"] : never;
-    textAlign?: T extends "text" ? ExcalidrawTextElement["textAlign"] : never;
-    verticalAlign?: T extends "text"
+    fontSize?: T extends "text" | "table"
+      ? ExcalidrawTextElement["fontSize"]
+      : never;
+    fontFamily?: T extends "text" | "table"
+      ? ExcalidrawTextElement["fontFamily"]
+      : never;
+    textAlign?: T extends "text" | "table"
+      ? ExcalidrawTextElement["textAlign"]
+      : never;
+    verticalAlign?: T extends "text" | "table"
       ? ExcalidrawTextElement["verticalAlign"]
       : never;
     boundElements?: ExcalidrawGenericElement["boundElements"];
+    // table props
+    rows?: T extends "table" ? number : never;
+    columns?: T extends "table" ? number : never;
+    cells?: T extends "table" ? ExcalidrawTableElement["cells"] : never;
+    columnWidths?: T extends "table"
+      ? ExcalidrawTableElement["columnWidths"]
+      : never;
+    rowBaseHeights?: T extends "table"
+      ? ExcalidrawTableElement["rowBaseHeights"]
+      : never;
+    headerRow?: T extends "table" ? boolean : never;
     baseHeight?: T extends "stickynote"
       ? ExcalidrawStickyNoteElement["baseHeight"]
       : never;
@@ -237,6 +258,9 @@ export class API {
       : never;
     elbowed?: boolean;
     fixedSegments?: FixedSegment[] | null;
+    // variable props
+    name?: T extends "variable" ? string : never;
+    value?: T extends "variable" ? string : never;
   }): NonDeleted<
     T extends "arrow" | "line"
       ? ExcalidrawLinearElement
@@ -252,6 +276,10 @@ export class API {
       ? ExcalidrawMagicFrameElement
       : T extends "stickynote"
       ? ExcalidrawStickyNoteElement
+      : T extends "variable"
+      ? ExcalidrawVariableElement
+      : T extends "table"
+      ? ExcalidrawTableElement
       : ExcalidrawGenericElement
   > => {
     let element: Mutable<ExcalidrawElement> = null!;
@@ -339,6 +367,22 @@ export class API {
           baseHeight: rest.baseHeight ?? height,
         });
         break;
+      case "table":
+        element = newTableElement({
+          ...base,
+          type,
+          rows: rest.rows,
+          columns: rest.columns,
+          cells: rest.cells,
+          columnWidths: rest.columnWidths,
+          rowBaseHeights: rest.rowBaseHeights,
+          fontSize: rest.fontSize,
+          fontFamily: rest.fontFamily,
+          textAlign: rest.textAlign,
+          verticalAlign: rest.verticalAlign,
+          headerRow: rest.headerRow,
+        });
+        break;
       case "text":
         const fontSize = rest.fontSize ?? appState.currentItemFontSize;
         const fontFamily = rest.fontFamily ?? appState.currentItemFontFamily;
@@ -405,6 +449,13 @@ export class API {
         break;
       case "magicframe":
         element = newMagicFrameElement({ ...base, width, height });
+        break;
+      case "variable":
+        element = newVariableElement({
+          ...base,
+          name: rest.name ?? "variable",
+          value: rest.value ?? "",
+        });
         break;
       default:
         assertNever(

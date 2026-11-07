@@ -48,6 +48,7 @@ import {
   isIframeLikeElement,
   isImageElement,
   isLinearElement,
+  isTableElement,
   isTextElement,
 } from "./typeChecks";
 import {
@@ -93,6 +94,7 @@ export const shouldTestInside = (element: ExcalidrawElement) => {
     (hasBackground(element.type) && !isTransparent(element.backgroundColor)) ||
     hasBoundTextElement(element) ||
     isIframeLikeElement(element) ||
+    isTableElement(element) ||
     isTextElement(element);
 
   if (element.type === "line") {
@@ -538,8 +540,11 @@ export const intersectElementWithLineSegment = (
 
   // Do the actual intersection test against the element's shape
   switch (element.type) {
+    case "variable":
+      return [];
     case "rectangle":
     case "stickynote":
+    case "table":
     case "image":
     case "text":
     case "iframe":

@@ -41,6 +41,12 @@ import {
   isLinearElement,
   isLineElement,
   isTextElement,
+  isTableElement,
+  getTableControlGeometry,
+  getTableSpanRect,
+  isSameTableControl,
+  TABLE_INSERT_DOT_SIZE,
+  TABLE_INSERT_BUTTON_SIZE,
   getTextElementWithAccuratePosition,
   LinearElementEditor,
   maxBindingDistance_simple,
@@ -74,6 +80,7 @@ import type {
   ExcalidrawFrameLikeElement,
   ExcalidrawImageElement,
   ExcalidrawLinearElement,
+  ExcalidrawTableElement,
   ExcalidrawTextElement,
   GroupId,
   NonDeleted,
@@ -102,6 +109,7 @@ import {
   strokeRectWithRotation_simple,
   snapScrollToDevicePixels,
 } from "./helpers";
+import { getUnknownVariableHighlights } from "./unknownVariables";
 
 import type {
   AppState,
@@ -1473,6 +1481,71 @@ const renderCropHandles = (
   context.restore();
 };
 
+const UNKNOWN_VARIABLE_COLOR = {
+  [THEME.LIGHT]: { tint: "rgba(219, 105, 101, 0.16)", line: "#db6965" },
+  [THEME.DARK]: { tint: "rgba(255, 168, 165, 0.16)", line: "#ffa8a5" },
+} as const;
+
+/**
+ * The red tint and wavy underline under each unknown `{{name}}` of the
+ * selected or edited texts. Interactive layer only: the static canvas and the
+ * exports show the placeholder as plain text.
+ */
+const renderUnknownVariables = (
+  app: AppClassProperties,
+  context: CanvasRenderingContext2D,
+  appState: InteractiveCanvasAppState,
+  selectedElements: readonly NonDeletedExcalidrawElement[],
+  elementsMap: NonDeletedSceneElementsMap,
+) => {
+  const highlights = getUnknownVariableHighlights(
+    selectedElements,
+    appState.editingTextElement?.id ?? null,
+    app.scene.getVariables().map,
+    elementsMap,
+    app.renderEnvironment,
+    appState.activeTableCell?.editing ? appState.activeTableCell : null,
+  );
+  if (!highlights.length) {
+    return;
+  }
+  const { tint, line } = UNKNOWN_VARIABLE_COLOR[appState.theme];
+  const wave = 2;
+  for (const { cx, cy, angle, rects } of highlights) {
+    context.save();
+    context.translate(cx + appState.scrollX, cy + appState.scrollY);
+    context.rotate(angle);
+    context.fillStyle = tint;
+    context.strokeStyle = line;
+    context.lineWidth = 1.5;
+    for (const rect of rects) {
+      const x = rect.x - cx;
+      const y = rect.y - cy;
+      context.beginPath();
+      // the radius is 3px, but `roundRect` isn't everywhere
+      if (context.roundRect) {
+        context.roundRect(x - 1, y, rect.width + 2, rect.height, 3);
+      } else {
+        context.rect(x - 1, y, rect.width + 2, rect.height);
+      }
+      context.fill();
+
+      const baseline = y + rect.height - 1;
+      context.beginPath();
+      context.moveTo(x, baseline);
+      for (let dx = 0; dx < rect.width; dx += wave * 2) {
+        context.lineTo(
+          Math.min(x + dx + wave, x + rect.width),
+          baseline - wave,
+        );
+        context.lineTo(Math.min(x + dx + wave * 2, x + rect.width), baseline);
+      }
+      context.stroke();
+    }
+    context.restore();
+  }
+};
+
 const renderTextBox = (
   text: ExcalidrawTextElement,
   context: CanvasRenderingContext2D,
@@ -1608,6 +1681,149 @@ const renderResetAutoResizeHandle = (
     autoResizeHandle.end[1] + appState.scrollY,
   );
   context.stroke();
+  context.restore();
+};
+
+const TABLE_CONTROL_COLORS = {
+  [THEME.LIGHT]: {
+    gripFill: "#f1f0ff",
+    gripBorder: "#d6d6d6",
+    dot: "#b8b8b8",
+    ring: "#ffffff",
+  },
+  [THEME.DARK]: {
+    gripFill: "#2e2d39",
+    gripBorder: "#d6d6d6",
+    dot: "#b8b8b8",
+    ring: "#232329",
+  },
+};
+
+/**
+ * The selected table's on-canvas controls: the active cell / row / column,
+ * the row and column grips and the insert handles at the line boundaries.
+ * Drawn in the table's local, rotated frame, sized in screen pixels.
+ */
+const renderTableControls = (
+  context: CanvasRenderingContext2D,
+  appState: InteractiveCanvasAppState,
+  table: ExcalidrawTableElement,
+  selectionColor: InteractiveCanvasRenderConfig["selectionColor"],
+) => {
+  const zoom = appState.zoom.value;
+  const px = 1 / zoom;
+  const colors = TABLE_CONTROL_COLORS[appState.theme];
+  const active =
+    appState.activeTableCell?.elementId === table.id
+      ? appState.activeTableCell
+      : null;
+  const hovered = appState.hoveredTableControl;
+  const geometry = getTableControlGeometry(table, appState.zoom);
+
+  context.save();
+  context.translate(
+    table.x + table.width / 2 + appState.scrollX,
+    table.y + table.height / 2 + appState.scrollY,
+  );
+  context.rotate(table.angle);
+  context.translate(-table.width / 2, -table.height / 2);
+
+  // the active cell, or the selected row / column
+  if (active && active.row < table.rowHeights.length) {
+    const rect = getTableSpanRect(table, active.row, active.col, active.span);
+    context.lineWidth = 2 * px;
+    context.strokeStyle = selectionColor;
+    if (active.span !== "cell") {
+      context.save();
+      context.globalAlpha = 0.1;
+      context.fillStyle = selectionColor;
+      context.fillRect(rect.x, rect.y, rect.width, rect.height);
+      context.restore();
+    }
+    context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+  }
+
+  // grips
+  const drawGrip = (
+    rect: { x: number; y: number; width: number; height: number },
+    isSelected: boolean,
+    isHovered: boolean,
+  ) => {
+    const isActive = isSelected || isHovered;
+    context.fillStyle = isActive ? selectionColor : colors.gripFill;
+    context.strokeStyle = isActive ? selectionColor : colors.gripBorder;
+    context.lineWidth = px;
+    roundRect(
+      context,
+      rect.x,
+      rect.y,
+      rect.width,
+      rect.height,
+      Math.min(rect.width, rect.height) / 2,
+    );
+  };
+  geometry.colGrips.forEach((rect, index) =>
+    drawGrip(
+      rect,
+      active?.span === "col" && active.col === index,
+      isSameTableControl(hovered, { kind: "col-grip", index }),
+    ),
+  );
+  geometry.rowGrips.forEach((rect, index) =>
+    drawGrip(
+      rect,
+      active?.span === "row" && active.row === index,
+      isSameTableControl(hovered, { kind: "row-grip", index }),
+    ),
+  );
+
+  // insert handles: a quiet dot, or a "+" button with the line it inserts at
+  const drawInsert = (
+    kind: "col-insert" | "row-insert",
+    index: number,
+    [cx, cy]: [number, number],
+  ) => {
+    const isHovered = isSameTableControl(hovered, { kind, index });
+    if (!isHovered) {
+      context.fillStyle = colors.dot;
+      context.beginPath();
+      context.arc(cx, cy, (TABLE_INSERT_DOT_SIZE / 2) * px, 0, Math.PI * 2);
+      context.fill();
+      return;
+    }
+    context.fillStyle = selectionColor;
+    if (kind === "col-insert") {
+      context.fillRect(cx - px, 0, 2 * px, table.height);
+    } else {
+      context.fillRect(0, cy - px, table.width, 2 * px);
+    }
+    const radius = (TABLE_INSERT_BUTTON_SIZE / 2) * px;
+    context.fillStyle = colors.ring;
+    context.beginPath();
+    context.arc(cx, cy, radius + 2 * px, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = selectionColor;
+    context.beginPath();
+    context.arc(cx, cy, radius, 0, Math.PI * 2);
+    context.fill();
+    context.strokeStyle = colors.ring;
+    context.lineWidth = 1.5 * px;
+    context.lineCap = "round";
+    const arm = radius * 0.45;
+    context.beginPath();
+    context.moveTo(cx - arm, cy);
+    context.lineTo(cx + arm, cy);
+    context.moveTo(cx, cy - arm);
+    context.lineTo(cx, cy + arm);
+    context.stroke();
+  };
+  geometry.colInserts.forEach((center, index) =>
+    drawInsert("col-insert", index, center),
+  );
+  geometry.rowInserts.forEach((center, index) =>
+    drawInsert("row-insert", index, center),
+  );
+
   context.restore();
 };
 
@@ -1974,6 +2190,19 @@ const _renderInteractiveScene = ({
         renderSelectionBorder(context, appState, selection),
       );
     }
+    if (
+      selectedElements.length === 1 &&
+      isTableElement(selectedElements[0]) &&
+      !selectedElements[0].locked &&
+      !appState.viewModeEnabled
+    ) {
+      renderTableControls(
+        context,
+        appState,
+        selectedElements[0],
+        selectionColor,
+      );
+    }
     // Paint resize transformHandles
     context.save();
     context.translate(appState.scrollX, appState.scrollY);
@@ -2101,6 +2330,14 @@ const _renderInteractiveScene = ({
       context.restore();
     }
   });
+
+  renderUnknownVariables(
+    app,
+    context,
+    appState,
+    selectedElements,
+    allElementsMap,
+  );
 
   renderSnaps(context, appState);
 
