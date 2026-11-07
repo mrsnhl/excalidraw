@@ -1,6 +1,9 @@
 import {
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_FONT_SIZE,
   DEFAULT_TABLE_COLUMN_WIDTH,
   DEFAULT_TABLE_ROW_HEIGHT,
+  MAX_TABLE_AUTO_COLUMN_WIDTH,
   MIN_TABLE_COLUMN_WIDTH,
   MIN_TABLE_ROW_HEIGHT,
   TABLE_CELL_PADDING,
@@ -19,9 +22,16 @@ import {
   normalizeText,
 } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
+import { newTableElement } from "./newElement";
 
 import type { RenderEnvironment } from "./renderEnvironment";
-import type { ExcalidrawTableElement, FontString } from "./types";
+import type { ExcalidrawTableElement, FontString, NonDeleted } from "./types";
+
+/** a table update, which never deletes (applies to deleted and live alike) */
+export type TableUpdate = Omit<
+  Partial<ExcalidrawTableElement>,
+  "id" | "created" | "updated" | "isDeleted"
+>;
 
 export type TableCellPosition = { row: number; col: number };
 
@@ -325,10 +335,10 @@ export const getTablePositionForResize = (
  */
 export const getTableUpdate = (
   element: ExcalidrawTableElement,
-  patch: Partial<ExcalidrawTableElement>,
+  patch: TableUpdate,
   variables?: VariableMap | null,
   env?: RenderEnvironment,
-): Partial<ExcalidrawTableElement> => {
+): TableUpdate => {
   const merged = { ...element, ...patch } as ExcalidrawTableElement;
   const width = sum(merged.columnWidths);
   const refreshed = refreshTableLayout({ ...merged, width }, variables, env);
@@ -338,6 +348,70 @@ export const getTableUpdate = (
     width,
     ...getTablePositionForResize(element, width, refreshed.height),
   };
+};
+
+/**
+ * Column widths that fit the widest cell line of each column (padding
+ * included), clamped to a sensible range.
+ */
+export const getAutoTableColumnWidths = (
+  cells: readonly (readonly string[])[],
+  element: Pick<ExcalidrawTableElement, "fontSize" | "fontFamily">,
+  headerRow = false,
+  variables?: VariableMap | null,
+  env?: RenderEnvironment,
+) => {
+  const resolvedVariables = normalizeVariables(variables);
+  const columns = cells[0]?.length ?? 0;
+  return Array.from({ length: columns }, (_, col) => {
+    let widest = 0;
+    cells.forEach((rowCells, row) => {
+      const font = getTableCellFont(element, headerRow && row === 0);
+      const text = normalizeText(
+        resolveVariables(rowCells[col], resolvedVariables),
+      );
+      for (const line of text.split("\n")) {
+        widest = Math.max(widest, line ? getLineWidth(line, font, env) : 0);
+      }
+    });
+    return clamp(
+      Math.ceil(widest + TABLE_CELL_PADDING * 2),
+      MIN_TABLE_COLUMN_WIDTH,
+      MAX_TABLE_AUTO_COLUMN_WIDTH,
+    );
+  });
+};
+
+/**
+ * A table holding `cells`, with column widths measured from the content and
+ * row heights refreshed (cells wider than the clamp wrap onto more lines).
+ */
+export const newTableElementFromCells = (
+  opts: Omit<
+    Parameters<typeof newTableElement>[0],
+    "type" | "rows" | "columns" | "columnWidths" | "rowBaseHeights"
+  > & {
+    cells: readonly (readonly string[])[];
+    variables?: VariableMap | null;
+    renderEnvironment?: RenderEnvironment;
+  },
+): NonDeleted<ExcalidrawTableElement> => {
+  const { variables, renderEnvironment, ...rest } = opts;
+  const columnWidths = getAutoTableColumnWidths(
+    opts.cells,
+    {
+      fontSize: opts.fontSize ?? DEFAULT_FONT_SIZE,
+      fontFamily: opts.fontFamily ?? DEFAULT_FONT_FAMILY,
+    },
+    opts.headerRow,
+    variables,
+    renderEnvironment,
+  );
+  const table = newTableElement({ ...rest, type: "table", columnWidths });
+  return {
+    ...table,
+    ...getTableUpdate(table, {}, variables, renderEnvironment),
+  } as NonDeleted<ExcalidrawTableElement>;
 };
 
 // -----------------------------------------------------------------------------

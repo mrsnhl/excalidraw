@@ -50,6 +50,13 @@ type SceneStateCallbackRemover = () => void;
 
 type SelectionHash = string & { __brand: "selectionHash" };
 
+// placeholder: replaced by scene variables (Part A). Stable, so the render
+// config comparing it by identity doesn't see a change on every render
+const EMPTY_VARIABLES: { map: VariableMap; version: string } = {
+  map: new Map(),
+  version: "",
+};
+
 const getNonDeletedElements = <T extends ExcalidrawElement>(
   allElements: readonly T[],
 ) => {
@@ -153,7 +160,7 @@ export class Scene {
 
   // placeholder: replaced by scene variables (Part A)
   getVariables(): { map: VariableMap; version: string } {
-    return { map: new Map(), version: "" };
+    return EMPTY_VARIABLES;
   }
 
   getElementsIncludingDeleted() {

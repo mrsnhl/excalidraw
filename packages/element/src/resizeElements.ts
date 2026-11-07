@@ -60,10 +60,12 @@ import {
   isImageElement,
   isLinearElement,
   isStickyNoteElement,
+  isTableElement,
   isTextElement,
 } from "./typeChecks";
 
 import { isInGroup } from "./groups";
+import { refreshTableLayout, scaleTableGrid } from "./table";
 import {
   getStickyNoteMinSize,
   getStickyNoteResizeIntent,
@@ -90,6 +92,7 @@ import type {
   ElementsMap,
   ExcalidrawElbowArrowElement,
   ExcalidrawArrowElement,
+  ExcalidrawTableElement,
 } from "./types";
 import type { ElementUpdate } from "./mutateElement";
 
@@ -783,10 +786,34 @@ export const resizeSingleElement = (
 
   // Constraints and font scaling use magnitudes. Keep the signs for the
   // geometry below, where crossing the opposite edge flips the element.
-  const flipFactorX = nextWidth < 0 ? -1 : 1;
-  const flipFactorY = nextHeight < 0 ? -1 : 1;
+  // tables never flip, dragging past the opposite edge stops at the minimum
+  const isResizingTable = isTableElement(latestElement);
+  const flipFactorX = nextWidth < 0 && !isResizingTable ? -1 : 1;
+  const flipFactorY = nextHeight < 0 && !isResizingTable ? -1 : 1;
   nextWidth = Math.abs(nextWidth);
   nextHeight = Math.abs(nextHeight);
+
+  let tableGrid: Pick<
+    ExcalidrawTableElement,
+    "columnWidths" | "rowBaseHeights" | "rowHeights"
+  > | null = null;
+  if (isTableElement(latestElement) && isTableElement(origElement)) {
+    // the grid decides the size: columns and row minimums scale with the
+    // drag, the row heights then grow to fit their content
+    const scaledGrid = scaleTableGrid(origElement, nextWidth, nextHeight);
+    nextWidth = scaledGrid.columnWidths.reduce((a, b) => a + b, 0);
+    const { rowHeights, height } = refreshTableLayout(
+      {
+        ...latestElement,
+        ...scaledGrid,
+        width: nextWidth,
+      },
+      scene.getVariables().map,
+      renderEnvironment,
+    );
+    nextHeight = height;
+    tableGrid = { ...scaledGrid, rowHeights };
+  }
 
   const elementsMap = scene.getNonDeletedElementsMap();
   const boundTextElement = getBoundTextElement(latestElement, elementsMap);
@@ -951,6 +978,7 @@ export const resizeSingleElement = (
       width: Math.abs(nextWidth),
       height: Math.abs(nextHeight),
       ...rescaledPoints,
+      ...tableGrid,
     };
 
     if (isBindingElement(latestElement)) {
@@ -1433,7 +1461,12 @@ export const resizeMultipleElements = (
         startBinding?: ExcalidrawElbowArrowElement["startBinding"];
         endBinding?: ExcalidrawElbowArrowElement["endBinding"];
         fixedSegments?: ExcalidrawElbowArrowElement["fixedSegments"];
-      };
+      } & Partial<
+          Pick<
+            ExcalidrawTableElement,
+            "columnWidths" | "rowBaseHeights" | "rowHeights"
+          >
+        >;
     }[] = [];
 
     for (const { orig, latest } of targetElements) {
@@ -1442,8 +1475,24 @@ export const resizeMultipleElements = (
         continue;
       }
 
-      const width = orig.width * scaleX;
-      const height = orig.height * scaleY;
+      let width = orig.width * scaleX;
+      let height = orig.height * scaleY;
+      let tableGrid: Pick<
+        ExcalidrawTableElement,
+        "columnWidths" | "rowBaseHeights" | "rowHeights"
+      > | null = null;
+      if (isTableElement(orig) && isTableElement(latest)) {
+        // same as the single resize: the grid decides the final size
+        const scaledGrid = scaleTableGrid(orig, width, height);
+        width = scaledGrid.columnWidths.reduce((a, b) => a + b, 0);
+        const refreshed = refreshTableLayout(
+          { ...latest, ...scaledGrid, width },
+          scene.getVariables().map,
+          renderEnvironment,
+        );
+        height = refreshed.height;
+        tableGrid = { ...scaledGrid, rowHeights: refreshed.rowHeights };
+      }
       const angle = normalizeRadians(
         (orig.angle * flipFactorX * flipFactorY) as Radians,
       );
@@ -1471,6 +1520,7 @@ export const resizeMultipleElements = (
         height,
         angle,
         ...rescaledPoints,
+        ...tableGrid,
       };
 
       if (isElbowArrow(orig)) {

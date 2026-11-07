@@ -680,7 +680,7 @@ const configExportDimension = async ({
   if (cfg.environment?.loadFonts) {
     await cfg.environment.loadFonts();
   } else {
-    await Fonts.loadElementsFonts(elements);
+    await Fonts.loadElementsFonts(elements, undefined, cfg.variables);
   }
 
   // value used to scale the canvas context. By default, we use this to
@@ -1117,7 +1117,7 @@ const exportToSvg = async ({
 
   const fontFaces =
     config?.skipInliningFonts !== true
-      ? await Fonts.generateFontFaceDeclarations(elements)
+      ? await Fonts.generateFontFaceDeclarations(elements, config?.variables)
       : [];
 
   const delimiter = "\n      "; // 6 spaces

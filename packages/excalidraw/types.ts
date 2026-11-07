@@ -12,6 +12,7 @@ import type { LinearElementEditor } from "@excalidraw/element";
 import type {
   ListMarkerAdvance,
   MaybeTransformHandleType,
+  TableControl,
 } from "@excalidraw/element";
 
 import type {
@@ -38,6 +39,7 @@ import type {
   ExcalidrawNonSelectionElement,
   BindMode,
   ExcalidrawTextElement,
+  ExcalidrawTableElement,
   StrokeVariability,
 } from "@excalidraw/element/types";
 
@@ -165,6 +167,7 @@ export type ToolType =
   | "frame"
   | "magicframe"
   | "stickynote"
+  | "table"
   | "embeddable"
   | "laser"
   | "autoshape"
@@ -247,6 +250,8 @@ export type InteractiveCanvasAppState = Readonly<
     snapLines: AppState["snapLines"];
     zenModeEnabled: AppState["zenModeEnabled"];
     editingTextElement: AppState["editingTextElement"];
+    activeTableCell: AppState["activeTableCell"];
+    hoveredTableControl: AppState["hoveredTableControl"];
     // Cropping
     isCropping: AppState["isCropping"];
     croppingElementId: AppState["croppingElementId"];
@@ -325,6 +330,14 @@ export type ScrollConstraints = {
    * {@link ViewportOffsets}) at the time the lock was installed.
    */
   offsets?: Offsets;
+};
+
+export type ActiveTableCell = {
+  elementId: ExcalidrawTableElement["id"];
+  row: number;
+  col: number;
+  span: "cell" | "row" | "col";
+  editing: boolean;
 };
 
 export interface AppState {
@@ -425,6 +438,13 @@ export interface AppState {
    * set when a new text is created or when an existing text is being edited
    */
   editingTextElement: ExcalidrawTextElement | null;
+  /**
+   * The selected cell (or whole row/column, per `span`) of a table. While
+   * `editing`, the cell's text is edited in the table cell editor.
+   */
+  activeTableCell: ActiveTableCell | null;
+  /** the table row/column grip or insert handle under the pointer */
+  hoveredTableControl: TableControl | null;
   activeTool: {
     /**
      * indicates a previous tool we should revert back to if we deselect the
