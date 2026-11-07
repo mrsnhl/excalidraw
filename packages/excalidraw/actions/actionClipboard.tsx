@@ -33,7 +33,12 @@ export const actionCopy = register<ClipboardEvent | null>({
     });
 
     try {
-      await copyToClipboard(elementsToCopy, app.files, event);
+      await copyToClipboard(
+        elementsToCopy,
+        app.files,
+        event,
+        app.scene.getVariables().map,
+      );
     } catch (error: any) {
       return {
         captureUpdate: CaptureUpdateAction.EVENTUALLY,

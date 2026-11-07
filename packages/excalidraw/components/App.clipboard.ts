@@ -191,6 +191,7 @@ export class AppClipboard {
       // TODO: remove formatting from elements if isPlainPaste
       this.app.addElementsFromPasteOrLibrary({
         elements,
+        variables: data.variables,
         files: data.files || null,
         position:
           this.app.editorInterface.formFactor === "desktop"

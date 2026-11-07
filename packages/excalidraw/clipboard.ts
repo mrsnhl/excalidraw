@@ -11,15 +11,22 @@ import {
 import { mutateElement } from "@excalidraw/element";
 import { deepCopyElement } from "@excalidraw/element";
 import {
+  countVariableUsage,
   isFrameLikeElement,
   isInitializedImageElement,
+  isValidVariableName,
+  isVariableElement,
 } from "@excalidraw/element";
 
 import { getContainingFrame } from "@excalidraw/element";
 
 import type { ValueOf } from "@excalidraw/common/utility-types";
 
-import type { IMAGE_MIME_TYPES, STRING_MIME_TYPES } from "@excalidraw/common";
+import type {
+  IMAGE_MIME_TYPES,
+  STRING_MIME_TYPES,
+  VariableMap,
+} from "@excalidraw/common";
 import type {
   ExcalidrawElement,
   ExcalidrawFrameLikeElement,
@@ -36,10 +43,14 @@ import {
 
 import type { BinaryFiles } from "./types";
 
+/** a scene variable that the copied elements refer to */
+export type ClipboardVariable = { name: string; value: string };
+
 type ElementsClipboard = {
   type: typeof EXPORT_DATA_TYPES.excalidrawClipboard;
   elements: readonly NonDeletedExcalidrawElement[];
   files: BinaryFiles | undefined;
+  variables?: ClipboardVariable[];
 };
 
 export type PastedMixedContent = { type: "text" | "imageUrl"; value: string }[];
@@ -47,6 +58,7 @@ export type PastedMixedContent = { type: "text" | "imageUrl"; value: string }[];
 export interface ClipboardData {
   elements?: readonly ExcalidrawElement[];
   files?: BinaryFiles;
+  variables?: ClipboardVariable[];
   text?: string;
   mixedContent?: PastedMixedContent;
   errorMessage?: string;
@@ -73,7 +85,11 @@ export const probablySupportsClipboardBlob =
 
 const clipboardContainsElements = (
   contents: any,
-): contents is { elements: ExcalidrawElement[]; files?: BinaryFiles } => {
+): contents is {
+  elements: ExcalidrawElement[];
+  files?: BinaryFiles;
+  variables?: unknown;
+} => {
   if (
     [
       EXPORT_DATA_TYPES.excalidraw,
@@ -140,13 +156,54 @@ export const createPasteEvent = ({
   return event;
 };
 
+/**
+ * The variables (out of `variables`) the elements refer to. Whoever pastes
+ * them gets the ones their scene is missing.
+ */
+const getReferencedVariables = (
+  elements: readonly ExcalidrawElement[],
+  variables: VariableMap | null | undefined,
+): ClipboardVariable[] => {
+  if (!variables?.size) {
+    return [];
+  }
+  const referenced: ClipboardVariable[] = [];
+  for (const name of countVariableUsage(elements).keys()) {
+    if (variables.has(name)) {
+      referenced.push({ name, value: variables.get(name)! });
+    }
+  }
+  return referenced;
+};
+
+/** keeps the well-formed entries, whatever the clipboard held */
+const sanitizeClipboardVariables = (
+  variables: unknown,
+): ClipboardVariable[] | undefined => {
+  if (!Array.isArray(variables)) {
+    return undefined;
+  }
+  const sanitized = variables.filter(
+    (variable): variable is ClipboardVariable =>
+      typeof variable?.name === "string" &&
+      isValidVariableName(variable.name) &&
+      typeof variable.value === "string",
+  );
+  return sanitized.length ? sanitized : undefined;
+};
+
 export const serializeAsClipboardJSON = ({
-  elements,
+  elements: _elements,
   files,
+  variables,
 }: {
   elements: readonly NonDeletedExcalidrawElement[];
   files: BinaryFiles | null;
+  /** the scene's variables, of which the referenced ones get copied too */
+  variables?: VariableMap | null;
 }) => {
+  // variables are not copied as elements, but by name & value (see below)
+  const elements = _elements.filter((element) => !isVariableElement(element));
   const elementsMap = arrayToMap(elements);
   const framesToCopy = new Set<ExcalidrawFrameLikeElement>(
     elements.filter((element) => isFrameLikeElement(element)),
@@ -189,6 +246,11 @@ export const serializeAsClipboardJSON = ({
     files: files ? _files : undefined,
   };
 
+  const referencedVariables = getReferencedVariables(elements, variables);
+  if (referencedVariables.length) {
+    contents.variables = referencedVariables;
+  }
+
   return JSON.stringify(contents);
 };
 
@@ -197,8 +259,9 @@ export const copyToClipboard = async (
   files: BinaryFiles | null,
   /** supply if available to make the operation more certain to succeed */
   clipboardEvent?: ClipboardEvent | null,
+  variables?: VariableMap | null,
 ) => {
-  const json = serializeAsClipboardJSON({ elements, files });
+  const json = serializeAsClipboardJSON({ elements, files, variables });
 
   await copyTextToSystemClipboard(
     {
@@ -543,6 +606,7 @@ export const parseClipboard = async (
       return {
         elements: systemClipboardData.elements,
         files: systemClipboardData.files,
+        variables: sanitizeClipboardVariables(systemClipboardData.variables),
         text: isPlainPaste
           ? JSON.stringify(systemClipboardData.elements, null, 2)
           : undefined,

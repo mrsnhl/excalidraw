@@ -137,6 +137,7 @@ import {
   isElbowArrow,
   isBindableElement,
   isTextElement,
+  isVariableElement,
   isStickyNoteElement,
   getNormalizedDimensions,
   isElementCompletelyInViewport,
@@ -427,6 +428,8 @@ import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
 import { findShapeByKey, TOGGLE_TOOLS } from "./Tools";
 
 import UnlockPopup from "./UnlockPopup";
+
+import type { ClipboardVariable } from "../clipboard";
 
 import type { ExcalidrawLibraryIds } from "../data/types";
 
@@ -4630,10 +4633,15 @@ class App extends React.Component<AppProps, AppState> {
     retainSeed?: boolean;
     fit?: SetViewportOptions["fit"];
     preserveFrameChildrenOrder?: boolean;
+    /** what the pasted texts refer to, see `ClipboardVariable` */
+    variables?: readonly ClipboardVariable[];
   }) => {
+    // variables aren't pasted as elements (nor are they part of a library
+    // item): the pasted texts resolve against this scene's, and only the
+    // names it's missing are created
     const elements = restoreElements(opts.elements, null, {
       deleteInvisibleElements: true,
-    });
+    }).filter((element) => !isVariableElement(element));
     const clientX =
       typeof opts.position === "object"
         ? opts.position.clientX
@@ -4662,7 +4670,10 @@ class App extends React.Component<AppProps, AppState> {
 
     const { nextElements, duplicatedElements } = duplication;
 
-    this.scene.replaceAllElements(nextElements);
+    this.scene.replaceAllElements([
+      ...nextElements,
+      ...this.variables.createMissing(opts.variables),
+    ]);
 
     duplicatedElements.forEach((newElement) => {
       if (isTextElement(newElement) && isBoundToContainer(newElement)) {

@@ -29,6 +29,8 @@ import {
 
 import { newElementWith } from "@excalidraw/element";
 
+import { buildVariableMap, isVariableElement } from "@excalidraw/element";
+
 import { isFrameLikeElement } from "@excalidraw/element";
 
 import {
@@ -568,8 +570,14 @@ const configExportDimension = async ({
   // deleted ones. The type contract requires non-deleted elements already,
   // but types alone don't protect JS consumers passing raw scene data.
   // These are also what SVG export embeds (`embedScene`).
-  const elements = getNonDeletedElements(
-    restoreElements(data.elements, null, { deleteInvisibleElements: true }),
+  const restoredElements = restoreElements(data.elements, null, {
+    deleteInvisibleElements: true,
+  });
+  const elements = getNonDeletedElements(restoredElements);
+  // never drawn, but embedding the scene keeps them, so that the
+  // placeholders still work when it's opened again
+  const variableElements = restoredElements.filter(
+    (element) => isVariableElement(element) && !element.isDeleted,
   );
 
   // initialize defaults
@@ -814,6 +822,7 @@ const configExportDimension = async ({
     // the restored & non-deleted-filtered elements — use these (not
     // `data.elements`) for all rendering purposes
     elements,
+    variableElements,
     normalizedPadding,
     contentWidth: width,
     contentHeight: height,
@@ -989,6 +998,7 @@ const exportToSvg = async ({
   const {
     config: cfg,
     elements,
+    variableElements,
     normalizedPadding,
     exportWidth,
     exportHeight,
@@ -1048,7 +1058,12 @@ const exportToSvg = async ({
         // keeps the ids stable. But it also requires that the exportToSvg is
         // being supplied with only the elements that we're exporting, and
         // no extra.
-        payload: serializeAsJSON(elements, appState, data.files || {}, "local"),
+        payload: serializeAsJSON(
+          [...elements, ...variableElements],
+          appState,
+          data.files || {},
+          "local",
+        ),
       });
     } catch (error: any) {
       console.error(error);
@@ -1394,9 +1409,13 @@ export const exportToClipboard = async (
   } else if (opts.type === "png") {
     await copyBlobToClipboardAsPng(exportScene(opts));
   } else if (opts.type === "json") {
+    const restoredElements = restoreElements(opts.data.elements, null);
     await copyToClipboard(
-      getNonDeletedElements(restoreElements(opts.data.elements, null)),
+      getNonDeletedElements(restoredElements),
       opts.data.files ?? null,
+      null,
+      // the scene's variables come in as (hidden) elements
+      buildVariableMap(restoredElements).map,
     );
   } else {
     throw new Error("Invalid export type");

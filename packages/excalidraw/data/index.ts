@@ -9,7 +9,7 @@ import {
   arrayToMap,
 } from "@excalidraw/common";
 
-import { getNonDeletedElements } from "@excalidraw/element";
+import { getNonDeletedElements, isVariableElement } from "@excalidraw/element";
 
 import { isFrameLikeElement } from "@excalidraw/element";
 
@@ -18,6 +18,7 @@ import { getElementsOverlappingFrame } from "@excalidraw/element";
 import type {
   ExcalidrawElement,
   ExcalidrawFrameLikeElement,
+  ExcalidrawVariableElement,
   NonDeleted,
   NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
@@ -90,9 +91,19 @@ export const prepareElementsForExport = (
     }
   }
 
+  // the exports embed the scene (SVG & PNG), which has to keep the variables
+  // the texts refer to. They are never drawn.
+  const variableElements = allElements.filter(
+    (element): element is NonDeleted<ExcalidrawVariableElement> =>
+      isVariableElement(element) && !element.isDeleted,
+  );
+
   return {
     exportingFrame,
-    exportedElements: cloneJSON(exportedElements) as ExportedElements,
+    exportedElements: cloneJSON([
+      ...exportedElements,
+      ...variableElements,
+    ]) as unknown as ExportedElements,
   };
 };
 
@@ -116,7 +127,7 @@ export const exportCanvas = async (
     renderEnvironment?: RenderEnvironment;
   },
 ) => {
-  if (elements.length === 0) {
+  if (elements.every((element) => isVariableElement(element))) {
     throw new Error(t("alerts.cannotExportEmptyCanvas"));
   }
 

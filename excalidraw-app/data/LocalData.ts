@@ -26,8 +26,6 @@ import {
   get,
 } from "idb-keyval";
 
-import { getNonDeletedElements } from "@excalidraw/element";
-
 import type { LibraryPersistedData } from "@excalidraw/excalidraw/data/library";
 import type { ImportedDataState } from "@excalidraw/excalidraw/data/types";
 import type { ExcalidrawElement, FileId } from "@excalidraw/element/types";
@@ -89,7 +87,8 @@ const saveDataStateToLocalStorage = (
 
     localStorage.setItem(
       STORAGE_KEYS.LOCAL_STORAGE_ELEMENTS,
-      JSON.stringify(getNonDeletedElements(elements)),
+      // variables are elements too, but `getNonDeletedElements` hides them
+      JSON.stringify(elements.filter((element) => !element.isDeleted)),
     );
     localStorage.setItem(
       STORAGE_KEYS.LOCAL_STORAGE_APP_STATE,

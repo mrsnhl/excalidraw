@@ -1,7 +1,13 @@
 import {
   CaptureUpdateAction,
+  isValidVariableName,
+  newVariableElement,
   refreshVariableDependents,
 } from "@excalidraw/element";
+
+import type { ExcalidrawVariableElement } from "@excalidraw/element/types";
+
+import type { ClipboardVariable } from "../clipboard";
 
 import type App from "./App";
 
@@ -17,6 +23,31 @@ export class AppVariables {
   private consecutiveFixes = 0;
 
   constructor(private app: App) {}
+
+  /**
+   * The variables a paste brings along, minus the names the scene has already:
+   * what the scene has for a name wins over what the source had.
+   */
+  public createMissing(
+    pasted: readonly ClipboardVariable[] | undefined,
+  ): ExcalidrawVariableElement[] {
+    if (!pasted?.length) {
+      return [];
+    }
+    const existing = this.app.scene.getVariables().map;
+    const created = new Map<string, ExcalidrawVariableElement>();
+    for (const { name, value } of pasted) {
+      if (
+        isValidVariableName(name) &&
+        typeof value === "string" &&
+        !existing.has(name) &&
+        !created.has(name)
+      ) {
+        created.set(name, newVariableElement({ name, value }));
+      }
+    }
+    return [...created.values()];
+  }
 
   /**
    * To be called on each update, before the elements are read and the store
