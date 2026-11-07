@@ -1,0 +1,76 @@
+@use "../css/variables.module" as *;
+
+.excalidraw {
+  .VariableAutocomplete {
+    position: fixed;
+    z-index: var(--zIndex-popup, 10);
+    box-sizing: border-box;
+    width: 272px;
+    max-width: calc(100vw - 16px);
+    padding: 0.5rem;
+    background: var(--island-bg-color);
+    box-shadow: var(--shadow-island);
+    border-radius: var(--border-radius-lg);
+
+    &__item {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      height: 2rem;
+      padding: 0 0.5rem;
+      border-radius: var(--border-radius-md);
+      color: var(--text-primary-color);
+      font-size: 0.875rem;
+      cursor: pointer;
+
+      svg {
+        flex: 0 0 auto;
+        width: 1rem;
+        height: 1rem;
+      }
+
+      &--selected {
+        background: var(--color-primary-light);
+      }
+    }
+
+    &__name {
+      flex: 0 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    &__value {
+      flex: 1 1 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: end;
+      font-size: 12px;
+      opacity: 0.6;
+    }
+
+    &__footer {
+      margin-top: 0.25rem;
+      padding: 0.5rem 0.5rem 0;
+      border-top: 1px solid var(--default-border-color);
+      font-size: 12px;
+      color: var(--color-gray-60);
+
+      kbd {
+        padding: 0 0.3rem;
+        border-radius: 4px;
+        border: 1px solid var(--default-border-color);
+        background: var(--color-surface-high);
+        color: var(--text-primary-color);
+        font-family: inherit;
+        font-size: 12px;
+      }
+    }
+  }
+}

@@ -262,8 +262,7 @@
     "unknownTooltip": "Unknown variable “{{name}}”. Add it in Variables to show a value here.",
     "autocompleteNavigate": "navigate",
     "autocompleteInsert": "insert",
-    "autocompleteClose": "close",
-    "autocompleteEmpty": "No matching variables"
+    "autocompleteClose": "close"
   },
   "buttons": {
     "clearReset": "Reset the canvas",
