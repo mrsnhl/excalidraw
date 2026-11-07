@@ -8,6 +8,7 @@ import {
   tryParseCells,
   tryParseNumber,
   tryParseSpreadsheet,
+  tryParseTable,
 } from "./charts.parse";
 import { renderRadarChart } from "./charts.radar";
 
@@ -21,7 +22,8 @@ export {
 } from "./charts.types";
 
 export { isSpreadsheetValidForChartType } from "./charts.helpers";
-export { tryParseCells, tryParseNumber, tryParseSpreadsheet };
+export { tryParseCells, tryParseNumber, tryParseSpreadsheet, tryParseTable };
+export type { ParseTableResult } from "./charts.parse";
 
 export const renderSpreadsheet = (
   chartType: ChartType,
