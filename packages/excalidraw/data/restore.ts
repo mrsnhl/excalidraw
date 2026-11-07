@@ -34,6 +34,8 @@ import {
   type StrokeWidthKey,
   isTransparent,
   DEFAULT_ZOOM,
+  hasVariablePlaceholders,
+  isValidVariableName,
 } from "@excalidraw/common";
 import {
   calculateFixedPointForNonElbowArrowBinding,
@@ -596,7 +598,13 @@ export const restoreElement = (
 
       // if empty text, mark as deleted. We keep in array
       // for data integrity purposes (collab etc.)
-      if (opts?.deleteInvisibleElements && !text && !element.isDeleted) {
+      if (
+        opts?.deleteInvisibleElements &&
+        !text &&
+        // text referencing variables may legitimately resolve to nothing
+        !hasVariablePlaceholders(element.originalText) &&
+        !element.isDeleted
+      ) {
         // TODO: we should not do this since it breaks sync / versioning when we exchange / apply just deltas and restore the elements (deletion isn't recorded)
         element = { ...element, originalText: text, isDeleted: true };
         element = bumpVersion(element);
@@ -757,6 +765,31 @@ export const restoreElement = (
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
       });
+    case "variable": {
+      if (
+        typeof element.name !== "string" ||
+        !isValidVariableName(element.name)
+      ) {
+        return null;
+      }
+      return {
+        ...restoreElementWithProperties(element, {
+          name: element.name,
+          value: String(element.value ?? ""),
+          x: 0,
+          y: 0,
+        }),
+        // variables are hidden and have no geometry
+        width: 0,
+        height: 0,
+        angle: 0 as Radians,
+        groupIds: [],
+        frameId: null,
+        boundElements: null,
+        locked: false,
+        link: null,
+      };
+    }
 
     // Don't use default case so as to catch a missing an element type case.
     // We also don't want to throw, but instead return void so we filter

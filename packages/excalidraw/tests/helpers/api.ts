@@ -24,6 +24,7 @@ import {
   newMagicFrameElement,
   newStickyNoteElement,
   newTextElement,
+  newVariableElement,
 } from "@excalidraw/element";
 
 import { isUsingAdaptiveRadius, getSelectedElements } from "@excalidraw/element";
@@ -45,6 +46,7 @@ import type {
   ExcalidrawElbowArrowElement,
   ExcalidrawArrowElement,
   ExcalidrawStickyNoteElement,
+  ExcalidrawVariableElement,
   FixedSegment,
   NonDeleted,
   NonDeletedExcalidrawElement,
@@ -237,6 +239,9 @@ export class API {
       : never;
     elbowed?: boolean;
     fixedSegments?: FixedSegment[] | null;
+    // variable props
+    name?: T extends "variable" ? string : never;
+    value?: T extends "variable" ? string : never;
   }): NonDeleted<
     T extends "arrow" | "line"
       ? ExcalidrawLinearElement
@@ -252,6 +257,8 @@ export class API {
       ? ExcalidrawMagicFrameElement
       : T extends "stickynote"
       ? ExcalidrawStickyNoteElement
+      : T extends "variable"
+      ? ExcalidrawVariableElement
       : ExcalidrawGenericElement
   > => {
     let element: Mutable<ExcalidrawElement> = null!;
@@ -405,6 +412,13 @@ export class API {
         break;
       case "magicframe":
         element = newMagicFrameElement({ ...base, width, height });
+        break;
+      case "variable":
+        element = newVariableElement({
+          ...base,
+          name: rest.name ?? "variable",
+          value: rest.value ?? "",
+        });
         break;
       default:
         assertNever(

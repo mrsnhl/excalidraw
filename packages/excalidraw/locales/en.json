@@ -372,7 +372,8 @@
     "stickynote": "Sticky note",
     "embeddable": "Web Embed",
     "selection": "Selection",
-    "iframe": "IFrame"
+    "iframe": "IFrame",
+    "variable": "Variable"
   },
   "headings": {
     "canvasActions": "Canvas actions",

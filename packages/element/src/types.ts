@@ -231,7 +231,8 @@ export type ExcalidrawElement =
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement
   | ExcalidrawIframeElement
-  | ExcalidrawEmbeddableElement;
+  | ExcalidrawEmbeddableElement
+  | ExcalidrawVariableElement;
 
 export type ExcalidrawNonSelectionElement = Exclude<
   ExcalidrawElement,
@@ -249,6 +250,19 @@ export type NonDeleted<TElement extends ExcalidrawElement> = TElement & {
 };
 
 export type NonDeletedExcalidrawElement = NonDeleted<ExcalidrawElement>;
+
+/**
+ * Hidden scene-level element holding one named variable that text can
+ * reference as `{{name}}`. Never rendered, selected or hit-tested.
+ */
+export type ExcalidrawVariableElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "variable";
+    /** must satisfy isValidVariableName */
+    name: string;
+    /** plain string; "\n" allowed (renders as a line break) */
+    value: string;
+  }>;
 
 export type ExcalidrawTextElement = _ExcalidrawElementBase &
   Readonly<{

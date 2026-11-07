@@ -58,6 +58,7 @@ import type {
   ExcalidrawElbowArrowElement,
   ExcalidrawLineElement,
   ExcalidrawStickyNoteElement,
+  ExcalidrawVariableElement,
 } from "./types";
 
 export type ElementConstructorOpts = MarkOptional<
@@ -294,6 +295,37 @@ export const newMagicFrameElement = (
   );
 
   return frameElement;
+};
+
+export const newVariableElement = (
+  opts: {
+    name: string;
+    value: string;
+  } & MarkOptional<ElementConstructorOpts, "x" | "y">,
+): NonDeleted<ExcalidrawVariableElement> => {
+  const { name, value, ...rest } = opts;
+  return newElementWith(
+    {
+      ..._newElementBase<ExcalidrawVariableElement>("variable", {
+        ...rest,
+        // variables are not part of the visual scene
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        angle: 0 as Radians,
+        groupIds: [],
+        frameId: null,
+        boundElements: null,
+        locked: false,
+        link: null,
+      }),
+      type: "variable",
+      name,
+      value,
+    },
+    {},
+  );
 };
 
 /**

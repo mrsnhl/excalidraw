@@ -30,6 +30,7 @@ import type {
   ExcalidrawFlowchartNodeElement,
   ExcalidrawLinearElementSubType,
   ExcalidrawStickyNoteElement,
+  ExcalidrawVariableElement,
 } from "./types";
 
 export const isInitializedImageElement = <T extends ExcalidrawElement>(
@@ -74,6 +75,12 @@ export const isStickyNoteElement = <T extends ExcalidrawElement>(
   element: T | null | undefined,
 ): element is T & ExcalidrawStickyNoteElement => {
   return element != null && element.type === "stickynote";
+};
+
+export const isVariableElement = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawVariableElement => {
+  return element != null && element.type === "variable";
 };
 
 export const isFrameElement = <T extends ExcalidrawElement>(
@@ -273,7 +280,8 @@ export const isExcalidrawElement = (
     case "frame":
     case "magicframe":
     case "image":
-    case "selection": {
+    case "selection":
+    case "variable": {
       return true;
     }
     default: {

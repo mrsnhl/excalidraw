@@ -10,6 +10,8 @@ import {
 } from "@excalidraw/common";
 import { isNonDeletedElement } from "@excalidraw/element";
 import { isFrameLikeElement } from "@excalidraw/element";
+import { isVariableElement } from "@excalidraw/element";
+import { buildVariableMap, getVariablesVersion } from "@excalidraw/element";
 import { getElementsInGroup } from "@excalidraw/element";
 
 import {
@@ -22,8 +24,11 @@ import { getSelectedElements } from "@excalidraw/element";
 
 import { mutateElement, type ElementUpdate } from "@excalidraw/element";
 
+import type { SceneVariables } from "@excalidraw/element";
+
 import type {
   ExcalidrawElement,
+  ExcalidrawVariableElement,
   NonDeletedExcalidrawElement,
   NonDeleted,
   ExcalidrawFrameLikeElement,
@@ -53,7 +58,8 @@ const getNonDeletedElements = <T extends ExcalidrawElement>(
   const elementsMap = new Map() as NonDeletedSceneElementsMap;
   const elements: NonDeleted<T>[] = [];
   for (const element of allElements) {
-    if (!element.isDeleted) {
+    // variables are hidden from every visual code path
+    if (!element.isDeleted && !isVariableElement(element)) {
       elements.push(element as NonDeleted<T>);
       elementsMap.set(
         element.id,
@@ -123,6 +129,12 @@ export class Scene {
     [];
   private frames: readonly ExcalidrawFrameLikeElement[] = [];
   private elementsMap = toBrandedType<SceneElementsMap>(new Map());
+  /** all variable elements, deleted ones included */
+  private variableElements: readonly ExcalidrawVariableElement[] = [];
+  private variablesCache: {
+    version: string;
+    variables: SceneVariables;
+  } | null = null;
   private selectedElementsCache: {
     selectedElementIds: AppState["selectedElementIds"] | null;
     elements: readonly NonDeletedExcalidrawElement[] | null;
@@ -158,6 +170,27 @@ export class Scene {
 
   getNonDeletedElements() {
     return this.nonDeletedElements;
+  }
+
+  /** the non-deleted variable elements (these are hidden from all the rest) */
+  getVariableElements(): readonly ExcalidrawVariableElement[] {
+    return this.variableElements.filter((element) => !element.isDeleted);
+  }
+
+  /**
+   * name -> value map of the scene's variables, plus a `version` that changes
+   * whenever any variable does. Memoized on the variable elements' versions,
+   * as elements may be mutated in place.
+   */
+  getVariables(): SceneVariables {
+    const version = getVariablesVersion(this.variableElements);
+    if (this.variablesCache?.version !== version) {
+      this.variablesCache = {
+        version,
+        variables: buildVariableMap(this.variableElements),
+      };
+    }
+    return this.variablesCache.variables;
   }
 
   getFramesIncludingDeleted() {
@@ -277,6 +310,7 @@ export class Scene {
     // we do trust the insertion order on the map, though maybe we shouldn't and should prefer order defined by fractional indices
     const _nextElements = toArray(nextElements);
     const nextFrameLikes: ExcalidrawFrameLikeElement[] = [];
+    const nextVariableElements: ExcalidrawVariableElement[] = [];
 
     if (!options?.skipValidation) {
       validateIndicesThrottled(_nextElements);
@@ -287,6 +321,8 @@ export class Scene {
     this.elements.forEach((element) => {
       if (isFrameLikeElement(element)) {
         nextFrameLikes.push(element);
+      } else if (isVariableElement(element)) {
+        nextVariableElements.push(element);
       }
       this.elementsMap.set(element.id, element);
     });
@@ -294,6 +330,7 @@ export class Scene {
     this.nonDeletedElements = nonDeletedElements.elements;
     this.nonDeletedElementsMap = nonDeletedElements.elementsMap;
 
+    this.variableElements = nextVariableElements;
     this.frames = nextFrameLikes;
     this.nonDeletedFramesLikes = getNonDeletedElements(this.frames).elements;
 
@@ -328,6 +365,8 @@ export class Scene {
     this.nonDeletedElements = [];
     this.nonDeletedFramesLikes = [];
     this.frames = [];
+    this.variableElements = [];
+    this.variablesCache = null;
     this.elementsMap.clear();
     this.selectedElementsCache.selectedElementIds = null;
     this.selectedElementsCache.elements = null;

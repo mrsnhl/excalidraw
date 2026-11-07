@@ -5,7 +5,11 @@ import { isFiniteNumber } from "@excalidraw/math";
 import type { AppState } from "@excalidraw/excalidraw/types";
 import type { GlobalPoint } from "@excalidraw/math";
 
-import { isFrameLikeElement, isTextElement } from "./typeChecks";
+import {
+  isFrameLikeElement,
+  isTextElement,
+  isVariableElement,
+} from "./typeChecks";
 import { getElementsInGroup } from "./groups";
 import { syncMovedIndices } from "./fractionalIndex";
 import { getSelectedElements } from "./selection";
@@ -59,7 +63,10 @@ const getIndicesToMove = (
       }
       selectedIndices.push(index);
       includeDeletedIndex = index + 1;
-    } else if (element.isDeleted && includeDeletedIndex === index) {
+    } else if (
+      (element.isDeleted || isVariableElement(element)) &&
+      includeDeletedIndex === index
+    ) {
       includeDeletedIndex = index + 1;
       deletedIndices.push(index);
     } else {
@@ -205,7 +212,7 @@ const getTargetIndex = (
   const sourceElement = elements[boundaryIndex];
 
   const indexFilter = (element: ExcalidrawElement) => {
-    if (element.isDeleted) {
+    if (element.isDeleted || isVariableElement(element)) {
       return false;
     }
     if (containingFrame) {

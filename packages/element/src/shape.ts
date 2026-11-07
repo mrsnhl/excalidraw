@@ -1058,7 +1058,8 @@ const _generateElementShape = (
     case "frame":
     case "magicframe":
     case "text":
-    case "image": {
+    case "image":
+    case "variable": {
       const shape: ElementShapes[typeof element.type] = null;
       // we return (and cache) `null` to make sure we don't regenerate
       // `element.canvas` on rerenders
@@ -1179,6 +1180,12 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
     case "text":
     case "selection":
       return getPolygonShape(element);
+    case "variable":
+      // hidden & zero-sized, never hit-tested. A degenerate shape is returned
+      // so that stray callers don't have to deal with a missing one.
+      return getPolygonShape(
+        element as unknown as Parameters<typeof getPolygonShape>[0],
+      );
     case "arrow":
     case "line": {
       const roughShape = ShapeCache.generateElementShape(element, null)[0];
