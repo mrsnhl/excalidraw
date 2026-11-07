@@ -1,6 +1,7 @@
 import { toIterable } from "@excalidraw/common";
 
 import { isInvisiblySmallElement } from "./sizeHelpers";
+import { isVariableElement } from "./typeChecks";
 
 import type {
   ExcalidrawElement,
@@ -52,9 +53,17 @@ export const getVisibleElements = (
       isNonDeletedElement(el) && !isInvisiblySmallElement(el),
   );
 
+/**
+ * Returns non-deleted, visual elements. Hidden variable elements are excluded,
+ * use `isNonDeletedElement` when you need to persist or sync them.
+ */
 export const getNonDeletedElements = <T extends ExcalidrawElement>(
   elements: readonly T[],
-): readonly NonDeleted<T>[] => elements.filter(isNonDeletedElement);
+): readonly NonDeleted<T>[] =>
+  elements.filter(
+    (element): element is NonDeleted<T> =>
+      isNonDeletedElement(element) && !isVariableElement(element),
+  );
 
 export * from "./align";
 export * from "./arrowEndpointText";
@@ -104,6 +113,8 @@ export * from "./transform";
 export * from "./transformHandles";
 export * from "./typeChecks";
 export * from "./utils";
+export * from "./variables";
+export * from "./variableRefresh";
 export * from "./zindex";
 export * from "./arrows/helpers";
 export * from "./arrowheads";

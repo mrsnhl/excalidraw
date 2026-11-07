@@ -491,8 +491,10 @@ export class Fonts {
         continue;
       }
 
-      // gather unique codepoints only when inlining fonts
-      for (const char of element.originalText) {
+      // gather unique codepoints only when inlining fonts. `text` is the
+      // displayed one (with its `{{variables}}` resolved), `originalText` the
+      // one the editor shows
+      for (const char of element.originalText + element.text) {
         if (!charsPerFamily[element.fontFamily]) {
           charsPerFamily[element.fontFamily] = new Set();
         }

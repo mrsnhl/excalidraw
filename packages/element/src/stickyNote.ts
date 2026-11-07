@@ -27,6 +27,9 @@ import { computeBoundTextPosition, getBoundTextElement } from "./textElement";
 import { measureText } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
 import { isStickyNoteElement, isTextElement } from "./typeChecks";
+import { buildVariableMap, getResolvedOriginalText } from "./variables";
+
+import type { VariableMap } from "@excalidraw/common";
 
 import type { RenderEnvironment } from "./renderEnvironment";
 import type { Scene } from "./Scene";
@@ -528,8 +531,13 @@ export const getStickyNoteMinSize = ({
 export type StickyNoteLayoutAnchor = VerticalResizeAnchor;
 
 export type StickyNoteLayoutOpts = {
-  /** unwrapped text to lay out; defaults to the label's `originalText` */
+  /**
+   * unwrapped text to lay out; defaults to the label's `originalText` with
+   * its `{{variables}}` resolved
+   */
   originalText?: string;
+  /** variables to resolve the label's `originalText` with */
+  variables?: VariableMap;
   /**
    * absolute base-height intent — the gesture-start value to preserve, or the
    * height a resize asked for. Omitted = keep the note's live `baseHeight`
@@ -699,7 +707,9 @@ export const getStickyNoteLayout = (
     };
   }
 
-  const originalText = opts.originalText ?? textElement.originalText;
+  const originalText =
+    opts.originalText ??
+    getResolvedOriginalText(textElement, opts.variables);
   const baseFontSize = normalizeStickyNoteFontSize(
     opts.baseFontSize ?? textElement.baseFontSize ?? textElement.fontSize,
   );
@@ -860,7 +870,10 @@ export const updateStickyNoteLayout = (
   const elementsMap = scene.getNonDeletedElementsMap();
   const textElement =
     text === undefined ? getBoundTextElement(container, elementsMap) : text;
-  const layout = getStickyNoteLayout(container, textElement, layoutOpts);
+  const layout = getStickyNoteLayout(container, textElement, {
+    variables: scene.getVariables().map,
+    ...layoutOpts,
+  });
 
   scene.mutateElement(container, layout.container);
   if (textElement && layout.text) {
@@ -928,6 +941,8 @@ export const relayoutStickyNotes = <T extends ExcalidrawElement>(
   opts?: {
     prevElementsMap?: ElementsMap;
     renderEnvironment?: RenderEnvironment;
+    /** defaults to the variables among `elements` */
+    variables?: VariableMap;
   },
 ): readonly T[] => {
   if (!affectedIds.size) {
@@ -953,6 +968,7 @@ export const relayoutStickyNotes = <T extends ExcalidrawElement>(
     return elements;
   }
 
+  const variables = opts?.variables ?? buildVariableMap(elements).map;
   const replacements = new Map<ExcalidrawElement["id"], T>();
   for (const id of containerIds) {
     const container = elementsMap.get(id) as ExcalidrawStickyNoteElement;
@@ -969,6 +985,7 @@ export const relayoutStickyNotes = <T extends ExcalidrawElement>(
     }
     const layout = getStickyNoteLayout(container, textElement, {
       renderEnvironment: opts?.renderEnvironment,
+      variables,
     });
     const nextContainer = newElementWith(container, layout.container);
     if (nextContainer !== container) {

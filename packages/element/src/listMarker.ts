@@ -1,4 +1,4 @@
-import { arrayToMap } from "@excalidraw/common";
+import { arrayToMap, resolveVariables } from "@excalidraw/common";
 
 import { refreshTextDimensions } from "./newElement";
 import {
@@ -223,7 +223,7 @@ const setText = (
         element,
         null,
         scene.getNonDeletedElementsMap(),
-        originalText,
+        resolveVariables(originalText, scene.getVariables().map),
         undefined,
         renderEnvironment,
       ),

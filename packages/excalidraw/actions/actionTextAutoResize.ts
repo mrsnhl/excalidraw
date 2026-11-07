@@ -1,6 +1,7 @@
 import { getFontString } from "@excalidraw/common";
 
 import {
+  getResolvedOriginalText,
   getTextAnchorRatios,
   isExcalidrawElement,
   isNonDeletedElement,
@@ -48,8 +49,9 @@ export const actionTextAutoResize = register({
       return false;
     }
 
+    const text = getResolvedOriginalText(target, app.scene.getVariables().map);
     const metrics = measureText(
-      target.originalText,
+      text,
       getFontString(target),
       target.lineHeight,
     );
@@ -65,7 +67,7 @@ export const actionTextAutoResize = register({
       height: metrics.height,
       x: target.x + (target.width - metrics.width) * anchor.x,
       y: target.y + (target.height - metrics.height) * anchor.y,
-      text: target.originalText,
+      text,
     });
 
     // the anchor only pins one point of the box, so any other arrow bound to

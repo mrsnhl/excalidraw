@@ -62,6 +62,7 @@ import {
   isStickyNoteElement,
   isTextElement,
 } from "./typeChecks";
+import { getResolvedOriginalText } from "./variables";
 
 import { isInGroup } from "./groups";
 import {
@@ -387,7 +388,7 @@ export const resizeSingleTextElement = (
     const newWidth = Math.max(minWidth, nextWidth);
 
     const text = wrapText(
-      element.originalText,
+      getResolvedOriginalText(element, scene.getVariables().map),
       getFontString(element),
       Math.abs(newWidth),
       renderEnvironment,

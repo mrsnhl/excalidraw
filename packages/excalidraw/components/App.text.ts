@@ -8,6 +8,7 @@ import {
   VERTICAL_ALIGN,
   getFontString,
   getLineHeight,
+  resolveVariables,
   sceneCoordsToViewportCoords,
   type Bounds,
   type StylesPanelMode,
@@ -184,7 +185,16 @@ export class AppText {
   ) {
     const elementsMap = this.app.scene.getElementsMapIncludingDeleted();
 
-    const updateElement = (nextOriginalText: string, isDeleted: boolean) => {
+    /**
+     * While typing, the raw text (with its `{{variables}}`) is laid out, as
+     * that's what the editor shows. On submit (`resolve`), the displayed
+     * text is the one with the variables resolved.
+     */
+    const updateElement = (
+      nextOriginalText: string,
+      isDeleted: boolean,
+      resolve = false,
+    ) => {
       const latestTextElement =
         this.app.scene.getElement<ExcalidrawTextElement>(element.id);
 
@@ -192,13 +202,19 @@ export class AppText {
         return;
       }
 
+      const nextText = resolve
+        ? resolveVariables(
+            nextOriginalText,
+            this.app.scene.getVariables().map,
+          )
+        : nextOriginalText;
       const container = getContainerElement(latestTextElement, elementsMap);
       const stickyContainer =
         container && isStickyNoteElement(container) ? container : null;
       // sticky notes: the fit owns both the label and the note geometry
       const stickyLayout = stickyContainer
         ? getStickyNoteLayout(stickyContainer, latestTextElement, {
-            originalText: nextOriginalText,
+            originalText: nextText,
             renderEnvironment: this.app.renderEnvironment,
           })
         : null;
@@ -229,7 +245,7 @@ export class AppText {
                   _element,
                   getContainerElement(_element, elementsMap),
                   elementsMap,
-                  nextOriginalText,
+                  nextText,
                   maxWidth,
                   this.app.renderEnvironment,
                 )),
@@ -305,7 +321,7 @@ export class AppText {
         this.textWysiwygSubmitHandler = null;
 
         const isDeleted = !nextOriginalText.trim();
-        updateElement(nextOriginalText, isDeleted);
+        updateElement(nextOriginalText, isDeleted, true);
 
         // keyboard-submit keeps focus on the edited object. For bound text, keep
         // the container selected even if the text becomes empty and is deleted.

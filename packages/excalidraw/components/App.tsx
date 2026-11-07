@@ -386,6 +386,7 @@ import { AppArrowText } from "./App.arrowText";
 import { AppClipboard } from "./App.clipboard";
 import { AppText } from "./App.text";
 import { AppTextTool } from "./App.textTool";
+import { AppVariables } from "./App.variables";
 import { AppBucketFill } from "./App.bucketFill";
 import { AppToolDrag, TOOL_DRAG_PREVIEW_OPACITY } from "./App.toolDrag";
 import { AppCursor } from "./App.cursor";
@@ -693,6 +694,7 @@ class App extends React.Component<AppProps, AppState> {
   public clipboard: AppClipboard = new AppClipboard(this, {
     getContainer: () => this.excalidrawContainerRef.current,
   });
+  public variables: AppVariables = new AppVariables(this);
   public text: AppText = new AppText(this, {
     getContainer: () => this.excalidrawContainerRef.current,
     getStylesPanelMode: () => this.stylesPanelMode,
@@ -4322,6 +4324,8 @@ class App extends React.Component<AppProps, AppState> {
     this.appStateObserver.flush(prevState);
 
     this.updateEmbeddables();
+    // (replaces the elements, so it has to come before they're read)
+    this.variables.refreshIfNeeded();
     const elements = this.scene.getElementsIncludingDeleted();
     const elementsMap = this.scene.getElementsMapIncludingDeleted();
 

@@ -33,6 +33,7 @@ import {
   isStickyNoteElement,
   isTextElement,
 } from "./typeChecks";
+import { getResolvedOriginalText } from "./variables";
 
 import { isNonDeletedElement } from ".";
 
@@ -99,7 +100,7 @@ export const redrawTextBoundingBox = (
       ? getBoundTextMaxWidth(container, textElement)
       : textElement.width;
     boundTextUpdates.text = wrapText(
-      textElement.originalText,
+      getResolvedOriginalText(textElement, scene.getVariables().map),
       getFontString(textElement),
       maxWidth,
       renderEnvironment,
@@ -203,7 +204,7 @@ export const handleBindTextResize = (
     ) {
       if (text) {
         text = wrapText(
-          textElement.originalText,
+          getResolvedOriginalText(textElement, scene.getVariables().map),
           getFontString(textElement),
           maxWidth,
           renderEnvironment,
