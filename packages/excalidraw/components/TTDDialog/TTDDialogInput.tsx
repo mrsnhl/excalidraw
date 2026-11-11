@@ -15,6 +15,7 @@ interface TTDDialogInputProps {
   onChange: (value: string) => void;
   onKeyboardSubmit?: () => void;
   errorLine?: number | null;
+  language?: CodeMirrorEditorProps["language"];
 }
 
 type EditorState =
@@ -30,6 +31,7 @@ export const TTDDialogInput = ({
   onChange,
   onKeyboardSubmit,
   errorLine,
+  language,
 }: TTDDialogInputProps) => {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -108,6 +110,7 @@ export const TTDDialogInput = ({
         placeholder={placeholder}
         theme={theme}
         errorLine={errorLine}
+        language={language}
       />
     );
   }

@@ -10,7 +10,7 @@ import type { MarkRequired } from "@excalidraw/common/utility-types";
 
 import { newTextElement } from "./newElement";
 import { wrapText } from "./textWrapping";
-import { isIframeElement } from "./typeChecks";
+import { isHtmlElement, isIframeElement } from "./typeChecks";
 
 import type { RenderEnvironment } from "./renderEnvironment";
 import type {
@@ -438,6 +438,8 @@ export const createPlaceholderEmbeddableLabel = (
   let text: string;
   if (isIframeElement(element)) {
     text = "IFrame element";
+  } else if (isHtmlElement(element)) {
+    text = "HTML frame";
   } else {
     text =
       !element.link || element?.link === "" ? "Empty Web-Embed" : element.link;

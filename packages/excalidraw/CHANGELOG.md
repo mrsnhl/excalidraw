@@ -13,6 +13,13 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### HTML frames
+
+- New `"html"` element (`{ type: "html", html }`) and an HTML tool in the main toolbar. The frame renders its markup live in a sandboxed iframe (`sandbox="allow-scripts allow-forms"`: scripts run in an opaque origin, with no access to the editor, its cookies or storage). Double-click, Enter or "Edit HTML" opens a code editor with a live preview.
+- Scripts run only for documents (markup with its variables resolved) the user created, applied in the editor, ran, or changed with a local action in this session. Markup from a file, a collaborator or a pasted element shows a static snapshot with a "Run" button in its corner until the user runs it; a document that changes from elsewhere (including a variable value) pauses again. The editor preview also shows a snapshot until the user runs it. A click on the center of a frame activates it after the double-click window, so a double-click opens the editor. HTML frames can't be added to the library.
+- `{{name}}` placeholders in the markup resolve to scene variables, and renaming or deleting a variable rewrites them like text and table cells.
+- PNG and SVG exports draw a static snapshot of the markup (an SVG `<foreignObject>` image, with scripts removed and no external resources). Where no DOM parser exists (e.g. Node exports), the frame exports as a placeholder. New exports: `newHtmlElement`, `isHtmlElement`, `HTML_FRAME_SANDBOX` and the `ExcalidrawHtmlElement` type.
+
 ### Scene variables
 
 - Text can reference scene variables with `{{name}}`. The text keeps the placeholder (`originalText`) and displays the variable's value, on the canvas and in every export. Variables are managed in the new "Variables" sidebar tab, or through `excalidrawAPI.getVariables()` / `excalidrawAPI.setVariables({ name: "value", other: null })`.

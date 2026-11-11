@@ -204,6 +204,7 @@
     "tableColumnActions": "Column actions",
     "tableHeaderRow": "Header row",
     "tableCell": "Cell, row {{row}}, column {{column}}",
+    "editHtml": "Edit HTML",
     "tab": "Tab",
     "shapeSwitch": "Switch shape",
     "preferences": "Preferences",
@@ -362,6 +363,7 @@
     "libraryElementTypeError": {
       "embeddable": "Embeddable elements cannot be added to the library.",
       "iframe": "IFrame elements cannot be added to the library.",
+      "html": "HTML frames cannot be added to the library.",
       "image": "Support for adding images to the library coming soon!"
     },
     "asyncPasteFailedOnRead": "Couldn't paste (couldn't read from system clipboard).",
@@ -389,6 +391,7 @@
     "stickynote": "Sticky note",
     "table": "Table",
     "embeddable": "Web Embed",
+    "html": "HTML",
     "laser": "Laser pointer",
     "autoshape": "Draw to shape",
     "bucketfill": "Bucket fill",
@@ -418,6 +421,7 @@
     "embeddable": "Web Embed",
     "selection": "Selection",
     "iframe": "IFrame",
+    "html": "HTML",
     "variable": "Variable"
   },
   "headings": {
@@ -436,6 +440,7 @@
     "embeddable": "Click-drag to create a website embed",
     "stickynote": "Click to place a note, or drag to size it",
     "table": "Click to place a table, or drag to size it",
+    "html": "Click to place an HTML frame, or drag to size it",
     "autoshape": "Draw rectangles, circles, diamonds, lines and arrows",
     "text_selected": "Double-click or press {{shortcut}} to edit text",
     "text_editing": "Press {{shortcut_1}} or {{shortcut_2}} to finish editing",
@@ -720,6 +725,21 @@
     "keepHint": "Your existing content will be kept",
     "libraryHint": "Library files will append",
     "replacedToast": "Content replaced. {{shortcut}} to undo"
+  },
+  "htmlFrame": {
+    "title": "Edit HTML",
+    "description": "Write HTML, CSS and JavaScript. Scripts run in a sandbox with no access to the editor. {{name}} placeholders show the variable values.",
+    "inputPlaceholder": "Write HTML here...",
+    "preview": "Preview",
+    "previewTitle": "HTML preview",
+    "frameTitle": "HTML frame",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "unknownVariables": "Unknown variables: {{names}}",
+    "run": "Run",
+    "runHint": "This HTML comes from a file or another person, so its scripts are paused. Run it only if you trust it.",
+    "locked": "The frame is locked or the editor is in view mode. Copy your changes, or unlock the frame and apply again.",
+    "conflict": "Someone else changed this frame while you edited it. Apply again to replace their change."
   },
   "mermaid": {
     "title": "Mermaid to Excalidraw",

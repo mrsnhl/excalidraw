@@ -240,6 +240,7 @@ export const AllowedExcalidrawActiveTools: Record<
   freedraw: true,
   stickynote: true,
   table: true,
+  html: true,
   eraser: false,
   custom: true,
   frame: true,
@@ -821,6 +822,10 @@ export const restoreElement = (
     case "iframe":
     case "embeddable":
       return restoreElementWithProperties(element, {});
+    case "html":
+      return restoreElementWithProperties(element, {
+        html: typeof element.html === "string" ? element.html : "",
+      });
     case "stickynote":
       return normalizeStickyNote(
         restoreElementWithProperties(element, {

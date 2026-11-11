@@ -118,6 +118,10 @@ const getHints = ({
     return t("hints.table");
   }
 
+  if (activeTool.type === "html") {
+    return t("hints.html");
+  }
+
   if (activeTool.type === "autoshape") {
     return t("hints.autoshape");
   }

@@ -168,6 +168,7 @@ export type ToolType =
   | "magicframe"
   | "stickynote"
   | "table"
+  | "html"
   | "embeddable"
   | "laser"
   | "autoshape"
@@ -515,7 +516,8 @@ export interface AppState {
     | { name: "commandPalette" }
     | { name: "settings" }
     | { name: "elementLinkSelector"; sourceElementId: ExcalidrawElement["id"] }
-    | { name: "charts"; data: Spreadsheet; rawText: string };
+    | { name: "charts"; data: Spreadsheet; rawText: string }
+    | { name: "htmlEditor"; elementId: ExcalidrawElement["id"] };
   /**
    * Reflects user preference for whether the default sidebar should be docked.
    *
@@ -1258,6 +1260,8 @@ export type AppClassProperties = {
   toggleLock: App["toggleLock"];
   setActiveTool: App["setActiveTool"];
   setOpenDialog: App["setOpenDialog"];
+  trustHtmlFrame: App["trustHtmlFrame"];
+  isHtmlFrameTrusted: App["isHtmlFrameTrusted"];
   insertEmbeddableElement: App["insertEmbeddableElement"];
   onMagicframeToolSelect: App["onMagicframeToolSelect"];
   getName: App["getName"];

@@ -49,6 +49,7 @@ import {
   newFrameElement,
   newFreeDrawElement,
   newIframeElement,
+  newHtmlElement,
   newImageElement,
   newLinearElement,
   newMagicFrameElement,
@@ -148,6 +149,7 @@ export type ValidLinearElement = {
                   | "magicframe"
                   | "embeddable"
                   | "iframe"
+                  | "html"
                 >;
                 id?: ExcalidrawGenericElement["id"];
               }
@@ -161,6 +163,7 @@ export type ValidLinearElement = {
                   | "magicframe"
                   | "embeddable"
                   | "iframe"
+                  | "html"
                 >;
               }
           )
@@ -190,6 +193,7 @@ export type ValidLinearElement = {
                   | "magicframe"
                   | "embeddable"
                   | "iframe"
+                  | "html"
                 >;
                 id?: ExcalidrawGenericElement["id"];
               }
@@ -203,6 +207,7 @@ export type ValidLinearElement = {
                   | "magicframe"
                   | "embeddable"
                   | "iframe"
+                  | "html"
                 >;
               }
           )
@@ -868,6 +873,10 @@ export const convertToExcalidrawElements = (
       }
       case "embeddable": {
         excalidrawElement = newEmbeddableElement({ ...element });
+        break;
+      }
+      case "html": {
+        excalidrawElement = newHtmlElement({ ...element });
         break;
       }
 

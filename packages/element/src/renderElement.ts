@@ -77,6 +77,7 @@ import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
 import { getTableCellFont, getTableLayout, getTableTextRuns } from "./table";
+import { getHtmlFrameContentBox } from "./htmlFrame";
 import {
   getStickyNoteFooter,
   getStickyNotePathCommands,
@@ -610,6 +611,31 @@ const drawElementOnCanvas = (
       context.lineCap = "round";
 
       rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      break;
+    }
+    case "html": {
+      context.lineJoin = "round";
+      context.lineCap = "round";
+
+      rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      const snapshot = renderConfig.htmlSnapshots?.get(element.id);
+      if (snapshot) {
+        withSavedContext(context, () => {
+          const box = getHtmlFrameContentBox(element);
+          if (element.roundness && context.roundRect) {
+            context.beginPath();
+            context.roundRect(
+              box.x,
+              box.y,
+              box.width,
+              box.height,
+              getCornerRadius(Math.min(box.width, box.height), element),
+            );
+            context.clip();
+          }
+          context.drawImage(snapshot, box.x, box.y, box.width, box.height);
+        });
+      }
       break;
     }
     case "arrow":
@@ -1269,6 +1295,7 @@ const drawElement = (
     case "image":
     case "text":
     case "iframe":
+    case "html":
     case "embeddable": {
       if (renderConfig.isExporting) {
         const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);

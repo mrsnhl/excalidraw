@@ -88,6 +88,7 @@ export * from "./fractionalIndex";
 export * from "./frame";
 export * from "./groups";
 export * from "./heading";
+export * from "./htmlFrame";
 export * from "./image";
 export * from "./linearElementEditor";
 export * from "./listMarker";

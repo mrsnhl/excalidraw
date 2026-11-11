@@ -30,7 +30,11 @@ import {
 
 import { newElementWith } from "@excalidraw/element";
 
-import { buildVariableMap, isVariableElement } from "@excalidraw/element";
+import {
+  buildVariableMap,
+  isVariableElement,
+  loadHtmlSnapshots,
+} from "@excalidraw/element";
 
 import { isFrameLikeElement } from "@excalidraw/element";
 
@@ -904,6 +908,12 @@ const exportToCanvas = async ({
     createImage: renderEnvironment.createImage,
   });
 
+  const htmlSnapshots = await loadHtmlSnapshots(
+    elementsForRender,
+    cfg.variables,
+    renderEnvironment,
+  );
+
   renderStaticScene({
     canvas,
     rc: rough.canvas(canvas),
@@ -945,6 +955,7 @@ const exportToCanvas = async ({
       theme,
       variables: cfg.variables ?? new Map(),
       variablesVersion: "",
+      htmlSnapshots,
     },
   });
 

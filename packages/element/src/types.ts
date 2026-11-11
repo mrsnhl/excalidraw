@@ -155,9 +155,21 @@ export type ExcalidrawIframeElement = _ExcalidrawElementBase &
     customData?: { generationData?: MagicGenerationData };
   }>;
 
+/**
+ * HTML the user wrote, rendered live in a sandboxed iframe on the canvas and
+ * as a snapshot image in exports
+ */
+export type ExcalidrawHtmlElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "html";
+    /** raw markup, including {{name}} placeholders */
+    html: string;
+  }>;
+
 export type ExcalidrawIframeLikeElement =
   | ExcalidrawIframeElement
-  | ExcalidrawEmbeddableElement;
+  | ExcalidrawEmbeddableElement
+  | ExcalidrawHtmlElement;
 
 export type IframeData =
   | {
@@ -254,6 +266,7 @@ export type ExcalidrawElement =
   | ExcalidrawMagicFrameElement
   | ExcalidrawIframeElement
   | ExcalidrawEmbeddableElement
+  | ExcalidrawHtmlElement
   | ExcalidrawVariableElement;
 
 export type ExcalidrawNonSelectionElement = Exclude<
@@ -336,6 +349,7 @@ export type ExcalidrawBindableElement =
   | ExcalidrawImageElement
   | ExcalidrawIframeElement
   | ExcalidrawEmbeddableElement
+  | ExcalidrawHtmlElement
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement;
 

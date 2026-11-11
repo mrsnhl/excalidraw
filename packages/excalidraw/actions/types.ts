@@ -51,6 +51,8 @@ export type ActionName =
   | "tableDeleteRow"
   | "tableDeleteColumn"
   | "toggleTableHeaderRow"
+  | "editHtmlFrame"
+  | "updateHtmlFrame"
   | "cut"
   | "paste"
   | "copyAsPng"

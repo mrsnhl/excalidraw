@@ -658,6 +658,53 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       "separator",
       {
         "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"
+            />
+            <path
+              d="M10 9.5l-2.5 2.5l2.5 2.5"
+            />
+            <path
+              d="M14 9.5l2.5 2.5l-2.5 2.5"
+            />
+          </g>
+        </svg>,
+        "keywords": [
+          "html",
+          "code",
+          "iframe",
+        ],
+        "label": "labels.editHtml",
+        "name": "editHtmlFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
+        "PanelComponent": [Function],
         "label": "labels.tableHeaderRow",
         "name": "toggleTableHeaderRow",
         "perform": [Function],
@@ -5594,6 +5641,53 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       "separator",
       {
         "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"
+            />
+            <path
+              d="M10 9.5l-2.5 2.5l2.5 2.5"
+            />
+            <path
+              d="M14 9.5l2.5 2.5l-2.5 2.5"
+            />
+          </g>
+        </svg>,
+        "keywords": [
+          "html",
+          "code",
+          "iframe",
+        ],
+        "label": "labels.editHtml",
+        "name": "editHtmlFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
+        "PanelComponent": [Function],
         "label": "labels.tableHeaderRow",
         "name": "toggleTableHeaderRow",
         "perform": [Function],
@@ -6888,6 +6982,53 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         "label": "labels.bringToFront",
         "name": "bringToFront",
         "perform": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"
+            />
+            <path
+              d="M10 9.5l-2.5 2.5l2.5 2.5"
+            />
+            <path
+              d="M14 9.5l2.5 2.5l-2.5 2.5"
+            />
+          </g>
+        </svg>,
+        "keywords": [
+          "html",
+          "code",
+          "iframe",
+        ],
+        "label": "labels.editHtml",
+        "name": "editHtmlFrame",
+        "perform": [Function],
+        "predicate": [Function],
         "trackEvent": {
           "category": "element",
         },
@@ -8951,6 +9092,53 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       "separator",
       {
         "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"
+            />
+            <path
+              d="M10 9.5l-2.5 2.5l2.5 2.5"
+            />
+            <path
+              d="M14 9.5l2.5 2.5l-2.5 2.5"
+            />
+          </g>
+        </svg>,
+        "keywords": [
+          "html",
+          "code",
+          "iframe",
+        ],
+        "label": "labels.editHtml",
+        "name": "editHtmlFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
+        "PanelComponent": [Function],
         "label": "labels.tableHeaderRow",
         "name": "toggleTableHeaderRow",
         "perform": [Function],
@@ -10015,6 +10203,53 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "label": "labels.bringToFront",
         "name": "bringToFront",
         "perform": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      "separator",
+      {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"
+            />
+            <path
+              d="M10 9.5l-2.5 2.5l2.5 2.5"
+            />
+            <path
+              d="M14 9.5l2.5 2.5l-2.5 2.5"
+            />
+          </g>
+        </svg>,
+        "keywords": [
+          "html",
+          "code",
+          "iframe",
+        ],
+        "label": "labels.editHtml",
+        "name": "editHtmlFrame",
+        "perform": [Function],
+        "predicate": [Function],
         "trackEvent": {
           "category": "element",
         },

@@ -92,6 +92,7 @@ import {
   isSelectionLikeTool,
   oneOf,
   getStrokeWidthByKey,
+  resolveVariables,
 } from "@excalidraw/common";
 
 import {
@@ -112,6 +113,10 @@ import {
   newMagicFrameElement,
   newStickyNoteElement,
   newTableElement,
+  newHtmlElement,
+  DEFAULT_HTML_FRAME_MARKUP,
+  DEFAULT_HTML_FRAME_WIDTH,
+  DEFAULT_HTML_FRAME_HEIGHT,
   newIframeElement,
   newArrowElement,
   newElement,
@@ -132,6 +137,9 @@ import {
   isLinearElementType,
   isUsingAdaptiveRadius,
   isIframeElement,
+  isHtmlElement,
+  HTML_FRAME_SANDBOX,
+  getHtmlSnapshotDataURL,
   isIframeLikeElement,
   isMagicFrameElement,
   isTextBindableContainer,
@@ -233,6 +241,7 @@ import type {
   ExcalidrawFrameLikeElement,
   ExcalidrawMagicFrameElement,
   ExcalidrawIframeLikeElement,
+  ExcalidrawHtmlElement,
   IframeData,
   ExcalidrawIframeElement,
   ExcalidrawEmbeddableElement,
@@ -292,6 +301,7 @@ import {
   actionTableDeleteRow,
   actionTableDeleteColumn,
   actionToggleTableHeaderRow,
+  actionEditHtmlFrame,
 } from "../actions";
 import { actionWrapTextInContainer } from "../actions/actionBoundText";
 import { actionPaste } from "../actions/actionClipboard";
@@ -435,7 +445,7 @@ import NewElementCanvas from "./canvases/NewElementCanvas";
 import { isPointHittingLink } from "./hyperlink/helpers";
 import { AppHost } from "./App.host";
 import { CursorHint, CursorHints } from "./CursorHint";
-import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
+import { MagicIcon, copyIcon, fullscreenIcon, playerPlayIcon } from "./icons";
 import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
 
 import { findShapeByKey, TOGGLE_TOOLS } from "./Tools";
@@ -485,6 +495,16 @@ import type {
 } from "../types";
 import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Action, ActionResult } from "../actions/types";
+
+/**
+ * How long a click on the center of an HTML frame waits before it activates
+ * the frame. A second click in this time is a double-click, which opens the
+ * HTML editor instead (an active frame would take the second click).
+ */
+const HTML_FRAME_ACTIVATION_DELAY_MS = 500;
+
+/** how many documents of one HTML frame stay trusted */
+const MAX_TRUSTED_HTML_FRAME_DOCUMENTS = 20;
 
 const AppContext = React.createContext<AppClassProperties>(null!);
 const AppPropsContext = React.createContext<AppProps>(null!);
@@ -670,6 +690,19 @@ class App extends React.Component<AppProps, AppState> {
    * the validation came from a trusted source (the editor).
    **/
   private embedsValidationStatus: EmbedsValidationStatus = new Map();
+  /**
+   * HTML frame documents that may run in this session, by frame id: the
+   * markup with its variables resolved, as the user created, applied, ran or
+   * changed it with a local action. Any other document (from a file, a
+   * collaborator, the library, or a variable value set elsewhere) shows a
+   * static snapshot until the user runs it.
+   */
+  private trustedHtmlFrames = new Map<ExcalidrawElement["id"], Set<string>>();
+  private pausedHtmlFrameSnapshots = new Map<
+    ExcalidrawElement["id"],
+    { key: string; url: string | null }
+  >();
+  private iframeActivationTimer = 0;
   /** embeds that have been inserted to DOM (as a perf optim, we don't want to
    * insert to DOM before user initially scrolls to them) */
   private initializedEmbeds = new Set<ExcalidrawIframeLikeElement["id"]>();
@@ -1532,6 +1565,9 @@ class App extends React.Component<AppProps, AppState> {
    * is still in progress (the partial content is render-only).
    */
   private isIframeLikeInteractive(element: ExcalidrawElement): boolean {
+    if (isHtmlElement(element)) {
+      return this.isHtmlFrameTrusted(element);
+    }
     if (isIframeElement(element)) {
       const data =
         element.customData?.generationData ??
@@ -1657,14 +1693,30 @@ class App extends React.Component<AppProps, AppState> {
     // 2. If the user double clicks the frame center to activate it
     //    without the delay youtube will immediately open the video
     //    in fullscreen mode
-    setTimeout(() => {
+    // An HTML frame waits for the double-click window: a double-click
+    // opens its editor, so the first click must not activate it.
+    const activationDelay =
+      isHtmlElement(iframeLikeElement) &&
+      !this.state.viewModeEnabled &&
+      this.state.activeTool.type !== "laser"
+        ? HTML_FRAME_ACTIVATION_DELAY_MS
+        : 100;
+    this.ownerWindow.clearTimeout(this.iframeActivationTimer);
+    this.iframeActivationTimer = this.ownerWindow.setTimeout(() => {
+      // the element can be deleted, or paused by a remote change, meanwhile
+      const current = this.scene
+        .getNonDeletedElementsMap()
+        .get(iframeLikeElement.id);
+      if (!current || !this.isIframeLikeInteractive(current)) {
+        return;
+      }
       this.setState({
         activeEmbeddable: { element: iframeLikeElement, state: "active" },
         selectedElementIds: { [iframeLikeElement.id]: true },
         newElement: null,
         selectionElement: null,
       });
-    }, 100);
+    }, activationDelay);
 
     if (isIframeElement(iframeLikeElement)) {
       return true;
@@ -1758,6 +1810,123 @@ class App extends React.Component<AppProps, AppState> {
     );
   };
 
+  /** the document an HTML frame runs: its markup with variables resolved */
+  private getHtmlFrameDocument(html: string) {
+    return resolveVariables(html, this.scene.getVariables().map);
+  }
+
+  /**
+   * Lets the markup of an HTML frame run in this session, with the current
+   * variable values.
+   */
+  public trustHtmlFrame = (
+    elementId: ExcalidrawHtmlElement["id"],
+    html: string,
+  ) => {
+    const document = this.getHtmlFrameDocument(html);
+    let trusted = this.trustedHtmlFrames.get(elementId);
+    if (!trusted) {
+      trusted = new Set();
+      this.trustedHtmlFrames.set(elementId, trusted);
+    }
+    if (trusted.has(document)) {
+      return;
+    }
+    trusted.add(document);
+    // keep the recent documents only (undo goes back to them)
+    if (trusted.size > MAX_TRUSTED_HTML_FRAME_DOCUMENTS) {
+      trusted.delete(trusted.values().next().value!);
+    }
+    this.pausedHtmlFrameSnapshots.delete(elementId);
+    this.triggerRender();
+  };
+
+  /** whether the current document of an HTML frame may run in this session */
+  public isHtmlFrameTrusted = (element: ExcalidrawHtmlElement) =>
+    !!this.trustedHtmlFrames
+      .get(element.id)
+      ?.has(this.getHtmlFrameDocument(element.html));
+
+  /** the HTML frames whose current document may run */
+  private getRunningHtmlFrameIds() {
+    const ids = new Set<ExcalidrawElement["id"]>();
+    if (!this.trustedHtmlFrames.size) {
+      return ids;
+    }
+    for (const element of this.scene.getNonDeletedElements()) {
+      if (isHtmlElement(element) && this.isHtmlFrameTrusted(element)) {
+        ids.add(element.id);
+      }
+    }
+    return ids;
+  }
+
+  /** the static snapshot a paused HTML frame shows, cached per markup */
+  private getPausedHtmlFrameSnapshot(
+    element: ExcalidrawHtmlElement,
+    html: string,
+  ) {
+    const key = `${element.width}x${element.height}x${element.strokeWidth}:${html}`;
+    const cached = this.pausedHtmlFrameSnapshots.get(element.id);
+    if (cached?.key === key) {
+      return cached.url;
+    }
+    const url = getHtmlSnapshotDataURL(
+      element,
+      this.scene.getVariables().map,
+      this.ownerDocument,
+    );
+    this.pausedHtmlFrameSnapshots.set(element.id, { key, url });
+    return url;
+  }
+
+  private renderPausedHtmlFrame(element: ExcalidrawHtmlElement, html: string) {
+    const snapshot = this.getPausedHtmlFrameSnapshot(element, html);
+    return (
+      <div
+        className="excalidraw__html-frame-paused"
+        data-testid="html-frame-paused"
+      >
+        {snapshot && (
+          <img
+            className="excalidraw__html-frame-paused__snapshot"
+            src={snapshot}
+            alt=""
+            draggable={false}
+          />
+        )}
+        {/* in a corner: a click to select or a double-click to edit the
+            frame lands in its center, and must not run the markup */}
+        <button
+          type="button"
+          className="excalidraw__html-frame-paused__run"
+          title={t("htmlFrame.runHint")}
+          onClick={() => this.trustHtmlFrame(element.id, element.html)}
+        >
+          {playerPlayIcon}
+          {t("htmlFrame.run")}
+        </button>
+      </div>
+    );
+  }
+
+  /** opens the HTML editor dialog for an HTML frame */
+  public openHtmlFrameEditor(element: ExcalidrawHtmlElement) {
+    // a double-click must not activate the frame after the editor opens
+    this.ownerWindow.clearTimeout(this.iframeActivationTimer);
+    if (this.state.viewModeEnabled || element.locked) {
+      return;
+    }
+    this.setState((prevState) => ({
+      activeEmbeddable: null,
+      selectedElementIds: makeNextSelectedElementIds(
+        { [element.id]: true },
+        prevState,
+      ),
+      openDialog: { name: "htmlEditor", elementId: element.id },
+    }));
+  }
+
   private isIframeLikeElementCenter(
     el: ExcalidrawIframeLikeElement | null,
     event: React.PointerEvent<HTMLElement> | PointerEvent,
@@ -1805,7 +1974,7 @@ class App extends React.Component<AppProps, AppState> {
 
           this.updateEmbedValidationStatus(element, validated);
         }
-      } else if (isIframeElement(element)) {
+      } else if (isIframeElement(element) || isHtmlElement(element)) {
         iframeLikes.add(element.id);
       }
       return false;
@@ -1834,7 +2003,8 @@ class App extends React.Component<AppProps, AppState> {
         (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
           (isEmbeddableElement(el) &&
             this.embedsValidationStatus.get(el.id) === true) ||
-          isIframeElement(el),
+          isIframeElement(el) ||
+          isHtmlElement(el),
       );
 
     return (
@@ -1865,6 +2035,7 @@ class App extends React.Component<AppProps, AppState> {
           }
 
           let src: IframeData | null;
+          let html: string | null = null;
           let isPendingGeneration = false;
 
           if (isIframeElement(el)) {
@@ -1970,6 +2141,14 @@ class App extends React.Component<AppProps, AppState> {
                 },
               } as const;
             }
+          } else if (isHtmlElement(el)) {
+            html = resolveVariables(el.html, this.scene.getVariables().map);
+            const document = html;
+            src = {
+              intrinsicSize: { w: el.width, h: el.height },
+              type: "document",
+              srcdoc: () => document,
+            } as const;
           } else {
             src = getEmbedLink(toValidURL(el.link || ""));
           }
@@ -2071,31 +2250,52 @@ class App extends React.Component<AppProps, AppState> {
                   >
                     {(isEmbeddableElement(el)
                       ? this.props.renderEmbeddable?.(el, this.state)
-                      : null) ?? (
-                      <iframe
-                        ref={(ref) => this.cacheEmbeddableRef(el, ref)}
-                        className="excalidraw__embeddable"
-                        srcDoc={
-                          src?.type === "document"
-                            ? src.srcdoc(this.state.theme)
-                            : undefined
-                        }
-                        src={
-                          src?.type !== "document" ? src?.link ?? "" : undefined
-                        }
-                        // https://stackoverflow.com/q/18470015
-                        scrolling="no"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title="Excalidraw Embedded Content"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen={true}
-                        sandbox={`${
-                          src?.sandbox?.allowSameOrigin
-                            ? "allow-same-origin"
-                            : ""
-                        } allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads`}
-                      />
-                    )}
+                      : null) ??
+                      (isHtmlElement(el) &&
+                      html !== null &&
+                      !this.isHtmlFrameTrusted(el) ? (
+                        this.renderPausedHtmlFrame(el, html)
+                      ) : (
+                        <iframe
+                          ref={(ref) => this.cacheEmbeddableRef(el, ref)}
+                          className={clsx("excalidraw__embeddable", {
+                            "excalidraw__html-frame": isHtmlElement(el),
+                          })}
+                          srcDoc={
+                            src?.type === "document"
+                              ? src.srcdoc(this.state.theme)
+                              : undefined
+                          }
+                          src={
+                            src?.type !== "document"
+                              ? src?.link ?? ""
+                              : undefined
+                          }
+                          // https://stackoverflow.com/q/18470015
+                          scrolling="no"
+                          title={
+                            isHtmlElement(el)
+                              ? t("htmlFrame.frameTitle")
+                              : "Excalidraw Embedded Content"
+                          }
+                          {...(isHtmlElement(el)
+                            ? {
+                                referrerPolicy: "no-referrer",
+                                sandbox: HTML_FRAME_SANDBOX,
+                              }
+                            : {
+                                referrerPolicy: "no-referrer-when-downgrade",
+                                allow:
+                                  "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+                                allowFullScreen: true,
+                                sandbox: `${
+                                  src?.sandbox?.allowSameOrigin
+                                    ? "allow-same-origin"
+                                    : ""
+                                } allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads`,
+                              })}
+                        />
+                      ))}
                   </div>
                 </div>
                 {isPendingGeneration && (
@@ -3192,7 +3392,20 @@ class App extends React.Component<AppProps, AppState> {
 
     let editingTextElement: AppState["editingTextElement"] | null = null;
     if (actionResult.elements) {
+      // a local action (e.g. renaming a variable) keeps the user's running
+      // HTML frames running. Undo and redo (`NEVER`) go back to documents
+      // that were trusted before, or pause.
+      const runningHtmlFrameIds =
+        actionResult.captureUpdate !== CaptureUpdateAction.NEVER
+          ? this.getRunningHtmlFrameIds()
+          : null;
       this.scene.replaceAllElements(actionResult.elements);
+      runningHtmlFrameIds?.forEach((id) => {
+        const element = this.scene.getNonDeletedElementsMap().get(id);
+        if (isHtmlElement(element)) {
+          this.trustHtmlFrame(id, element.html);
+        }
+      });
       didUpdate = true;
     }
 
@@ -3609,6 +3822,8 @@ class App extends React.Component<AppProps, AppState> {
     (opts?: { resetLoadingState: boolean }) => {
       this.elementRenderOverrides = new Map();
       this.elementRenderOffsets = new Map();
+      this.trustedHtmlFrames.clear();
+      this.pausedHtmlFrameSnapshots.clear();
       this.scene.replaceAllElements([]);
       this.setState((state) => ({
         ...getDefaultAppState(),
@@ -3977,6 +4192,7 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     this.ownerWindow.clearTimeout(this.zenModeTransitionTimer);
+    this.ownerWindow.clearTimeout(this.iframeActivationTimer);
     this.unmarkZenModeTransition();
     this.editorLifecycleEvents.emit("editor:unmount");
     this.props.onUnmount?.();
@@ -5596,6 +5812,13 @@ class App extends React.Component<AppProps, AppState> {
             this.setState({
               editingFrame: selectedElement.id,
             });
+          } else if (
+            isHtmlElement(selectedElement) &&
+            !selectedElement.locked
+          ) {
+            this.openHtmlFrameEditor(selectedElement);
+            event.preventDefault();
+            return;
           }
         }
       }
@@ -6463,6 +6686,11 @@ class App extends React.Component<AppProps, AppState> {
     this.cursor.reset();
     if (!this.state.viewModeEnabled) {
       const hitElement = this.getElementAtPosition(sceneX, sceneY);
+
+      if (isHtmlElement(hitElement) && !hitElement.locked) {
+        this.openHtmlFrameEditor(hitElement);
+        return;
+      }
 
       if (isIframeLikeElement(hitElement)) {
         if (this.isIframeLikeInteractive(hitElement)) {
@@ -7610,6 +7838,9 @@ class App extends React.Component<AppProps, AppState> {
   private handleCanvasPointerDown = (
     event: React.PointerEvent<HTMLElement>,
   ) => {
+    // a second click within the activation delay (a double-click) cancels
+    // the activation that the first click scheduled
+    this.ownerWindow.clearTimeout(this.iframeActivationTimer);
     if (
       !this.isInteractionEnabled() &&
       !this.isToolSupported(this.state.activeTool.type)
@@ -8882,7 +9113,8 @@ class App extends React.Component<AppProps, AppState> {
       | "diamond"
       | "ellipse"
       | "iframe"
-      | "embeddable",
+      | "embeddable"
+      | "html",
   ) {
     return this.state.currentItemRoundness === "round"
       ? {
@@ -8905,7 +9137,8 @@ class App extends React.Component<AppProps, AppState> {
       | ExcalidrawGenericElement["type"]
       | "embeddable"
       | "stickynote"
-      | "table",
+      | "table"
+      | "html",
     pointerDownState: PointerDownState,
   ): void => {
     const [gridX, gridY] = getGridPoint(
@@ -8958,6 +9191,13 @@ class App extends React.Component<AppProps, AppState> {
         type: "table",
         ...baseElementAttributes,
       });
+    } else if (elementType === "html") {
+      element = newHtmlElement({
+        type: "html",
+        html: DEFAULT_HTML_FRAME_MARKUP,
+        ...baseElementAttributes,
+      });
+      this.trustHtmlFrame(element.id, element.html);
     } else {
       element = newElement({
         type: elementType,
@@ -10048,37 +10288,47 @@ class App extends React.Component<AppProps, AppState> {
         return;
       }
 
-      if (newElement && isTableElement(newElement)) {
-        // a gesture under the drag threshold is a click: the default grid,
+      if (
+        newElement &&
+        (isTableElement(newElement) || isHtmlElement(newElement))
+      ) {
+        // a gesture under the drag threshold is a click: the default size,
         // centered on the pointer. A drag keeps the size it was dragged to
         const zoom = this.state.zoom.value;
         const isClick =
           newElement.width * zoom < DRAGGING_THRESHOLD &&
           newElement.height * zoom < DRAGGING_THRESHOLD;
         if (isClick) {
-          const grid = newTableElement({
-            type: "table",
-            x: 0,
-            y: 0,
-            rows: newElement.cells.length,
-            columns: newElement.columnWidths.length,
-          });
-          const [x, y] = getGridPoint(
-            pointerDownState.origin.x - grid.width / 2,
-            pointerDownState.origin.y - grid.height / 2,
-            childEvent[KEYS.CTRL_OR_CMD] ? null : this.getEffectiveGridSize(),
-          );
-          this.scene.mutateElement(
-            newElement,
-            {
-              x,
-              y,
+          let size;
+          if (isTableElement(newElement)) {
+            const grid = newTableElement({
+              type: "table",
+              x: 0,
+              y: 0,
+              rows: newElement.cells.length,
+              columns: newElement.columnWidths.length,
+            });
+            size = {
               width: grid.width,
               height: grid.height,
               columnWidths: grid.columnWidths,
               rowBaseHeights: grid.rowBaseHeights,
               rowHeights: grid.rowHeights,
-            },
+            };
+          } else {
+            size = {
+              width: DEFAULT_HTML_FRAME_WIDTH,
+              height: DEFAULT_HTML_FRAME_HEIGHT,
+            };
+          }
+          const [x, y] = getGridPoint(
+            pointerDownState.origin.x - size.width / 2,
+            pointerDownState.origin.y - size.height / 2,
+            childEvent[KEYS.CTRL_OR_CMD] ? null : this.getEffectiveGridSize(),
+          );
+          this.scene.mutateElement(
+            newElement,
+            { x, y, ...size },
             { informMutation: false, isDragging: false },
           );
         }
@@ -10106,7 +10356,11 @@ class App extends React.Component<AppProps, AppState> {
             type: this.state.preferredSelectionTool.type,
           }),
         }));
-        this.table.startCellEditing(newElement, 0, 0);
+        if (isTableElement(newElement)) {
+          this.table.startCellEditing(newElement, 0, 0);
+        } else {
+          this.openHtmlFrameEditor(newElement);
+        }
         return;
       }
 
@@ -11469,6 +11723,8 @@ class App extends React.Component<AppProps, AppState> {
       CONTEXT_MENU_SEPARATOR,
       actionAddToLibrary,
       ...zIndexActions,
+      CONTEXT_MENU_SEPARATOR,
+      actionEditHtmlFrame,
       CONTEXT_MENU_SEPARATOR,
       actionToggleTableHeaderRow,
       actionTableInsertRowAbove,

@@ -1,0 +1,90 @@
+.excalidraw {
+  .HtmlFrameDialog {
+    // fullscreen (narrow screens): the island needs a definite height, or
+    // the flex panels below collapse to nothing
+    &.Dialog--fullscreen .Island {
+      height: 100%;
+    }
+
+    .Dialog__content {
+      display: flex;
+      flex-direction: column;
+      height: min(720px, calc(100vh - 12rem));
+    }
+
+    .ttd-dialog-desc {
+      margin: 0 0 1rem 0;
+    }
+
+    .ttd-dialog-panels {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+
+    .ttd-dialog-output-wrapper.HtmlFrameDialog__stage {
+      flex: 1 1 0;
+      min-height: 0;
+      height: auto;
+      width: 100%;
+      padding: 0.75rem;
+    }
+
+    &__stage-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    &__preview {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      translate: -50% -50%;
+      border: 1px solid var(--dialog-border-color);
+      border-radius: var(--border-radius-md);
+      // like a browser page, and the same in each theme
+      background: #ffffff;
+    }
+
+    &__preview--paused {
+      overflow: hidden;
+
+      img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        user-select: none;
+      }
+    }
+
+    &__run {
+      position: absolute;
+      left: 0.75rem;
+      right: 0.75rem;
+      bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--border-radius-md);
+      background: var(--island-bg-color);
+      box-shadow: var(--shadow-island);
+      font-size: 0.875rem;
+
+      span {
+        flex: 1 1 auto;
+      }
+    }
+
+    &__unknown,
+    &__notice {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--border-radius-md);
+      background: var(--color-warning-background);
+      color: var(--color-warning-color);
+      font-size: 0.875rem;
+    }
+  }
+}

@@ -7,6 +7,7 @@ import {
   hasBoundTextElement,
   isElbowArrow,
   isImageElement,
+  isHtmlElement,
   isLinearElement,
   isTableElement,
   isTextElement,
@@ -182,6 +183,11 @@ export const getShapeActionPredicates = (
     // the two flags below.
     link: singleSelected || isSingleElementBoundContainer,
     linkSingleOnly: singleSelected,
+    htmlEditor:
+      !appState.viewModeEnabled &&
+      singleSelected &&
+      isHtmlElement(targetElements[0]) &&
+      !targetElements[0].locked,
     cropEditor:
       !appState.croppingElementId &&
       singleSelected &&
