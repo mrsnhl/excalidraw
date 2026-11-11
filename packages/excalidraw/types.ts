@@ -1261,6 +1261,7 @@ export type AppClassProperties = {
   setActiveTool: App["setActiveTool"];
   setOpenDialog: App["setOpenDialog"];
   trustHtmlFrame: App["trustHtmlFrame"];
+  isHtmlFrameTrusted: App["isHtmlFrameTrusted"];
   insertEmbeddableElement: App["insertEmbeddableElement"];
   onMagicframeToolSelect: App["onMagicframeToolSelect"];
   getName: App["getName"];

@@ -149,6 +149,19 @@ export const buildHtmlSnapshotSvg = (
   return svg;
 };
 
+/** a snapshot of a document as an SVG data URL, `null` without a DOM */
+export const getHtmlSnapshotDataURLForDocument = (
+  html: string,
+  width: number,
+  height: number,
+  doc: Document | undefined,
+): string | null => {
+  const svg = buildHtmlSnapshotSvg(html, width, height, doc);
+  return svg
+    ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+    : null;
+};
+
 /** the snapshot of an HTML frame as an SVG data URL, `null` without a DOM */
 export const getHtmlSnapshotDataURL = (
   element: ExcalidrawHtmlElement,
@@ -156,15 +169,12 @@ export const getHtmlSnapshotDataURL = (
   doc: Document | undefined,
 ): string | null => {
   const box = getHtmlFrameContentBox(element);
-  const svg = buildHtmlSnapshotSvg(
+  return getHtmlSnapshotDataURLForDocument(
     resolveVariables(element.html, variables),
     box.width,
     box.height,
     doc,
   );
-  return svg
-    ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-    : null;
 };
 
 const SNAPSHOT_LOAD_TIMEOUT_MS = 3000;

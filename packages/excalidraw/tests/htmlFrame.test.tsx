@@ -23,9 +23,11 @@ import {
   actionUpdateHtmlFrame,
 } from "../actions/actionHtmlFrame";
 import { actionAddToLibrary } from "../actions/actionAddToLibrary";
+import { actionDuplicateSelection } from "../actions/actionDuplicateSelection";
 import {
   actionDeleteVariable,
   actionRenameVariable,
+  actionUpdateVariable,
 } from "../actions/actionVariables";
 import { getDefaultAppState } from "../appState";
 import { restoreElements } from "../data/restore";
@@ -167,6 +169,7 @@ describe("HTML editor", () => {
   it("previews with resolved variables, and lists unknown ones", async () => {
     addVariable("price", "$12");
     const frame = createFrame("<p>{{price}} {{ghost}}</p>");
+    act(() => h.app.trustHtmlFrame(frame.id, frame.html));
     API.setSelectedElements([frame]);
     run(actionEditHtmlFrame);
 
@@ -176,11 +179,30 @@ describe("HTML editor", () => {
     expect(screen.getByRole("status").textContent).toContain("{{ghost}}");
   });
 
+  it("does not run markup from elsewhere in the preview until Run", async () => {
+    const frame = createFrame("<p>hi</p><script>parent.x=1</script>");
+    API.setSelectedElements([frame]);
+    run(actionEditHtmlFrame);
+
+    const paused = await screen.findByTestId("html-frame-preview-paused");
+    expect(screen.queryByTestId("html-frame-preview")).toBe(null);
+    expect(
+      decodeURIComponent(
+        paused.querySelector("img")?.getAttribute("src") ?? "",
+      ),
+    ).not.toContain("<script");
+
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    expect(screen.getByTestId("html-frame-preview")).toBeDefined();
+    // running the preview does not run the frame on the canvas
+    expect(h.app.isHtmlFrameTrusted(getFrames()[0])).toBe(false);
+  });
+
   it("keeps the dialog open when the frame is locked meanwhile", async () => {
     const frame = createFrame("<p>old</p>");
     API.setSelectedElements([frame]);
     run(actionEditHtmlFrame);
-    await screen.findByTestId("html-frame-preview");
+    await screen.findByText("Apply");
 
     API.updateScene({
       elements: h.elements.map((element) =>
@@ -199,7 +221,7 @@ describe("HTML editor", () => {
     const frame = createFrame("<p>old</p>");
     API.setSelectedElements([frame]);
     run(actionEditHtmlFrame);
-    await screen.findByTestId("html-frame-preview");
+    await screen.findByText("Apply");
 
     API.updateScene({
       elements: h.elements.map((element) =>
@@ -321,6 +343,66 @@ describe("live frame", () => {
       expect(iframe?.getAttribute("srcdoc")).toBe("<p>$12</p>");
       expect(iframe?.getAttribute("sandbox")).toBe(HTML_FRAME_SANDBOX);
     });
+  });
+});
+
+describe("trust", () => {
+  const setup = () => {
+    const variable = addVariable("title", "Hello");
+    const frame = createFrame("<p>{{title}}</p>");
+    act(() => h.app.trustHtmlFrame(frame.id, frame.html));
+    expect(h.app.isHtmlFrameTrusted(getFrames()[0])).toBe(true);
+    return variable;
+  };
+
+  it("pauses a running frame when a variable changes elsewhere", () => {
+    const variable = setup();
+    // e.g. a collaborator sets the value to markup that runs a script
+    API.updateScene({
+      elements: h.elements.map((element) =>
+        element.id === variable.id
+          ? {
+              ...element,
+              value: "<img src=x onerror=alert(1)>",
+              version: element.version + 1,
+              versionNonce: element.versionNonce + 1,
+            }
+          : element,
+      ),
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    expect(h.app.isHtmlFrameTrusted(getFrames()[0])).toBe(false);
+  });
+
+  it("keeps a running frame running after the user's own variable edits", () => {
+    const variable = setup();
+    run(actionUpdateVariable, { id: variable.id, value: "Bye" });
+    expect(h.app.isHtmlFrameTrusted(getFrames()[0])).toBe(true);
+
+    run(actionRenameVariable, { id: variable.id, name: "heading" });
+    expect(getFrames()[0].html).toBe("<p>{{heading}}</p>");
+    expect(h.app.isHtmlFrameTrusted(getFrames()[0])).toBe(true);
+
+    // undo goes back to documents that ran before
+    Keyboard.undo();
+    Keyboard.undo();
+    expect(h.app.isHtmlFrameTrusted(getFrames()[0])).toBe(true);
+  });
+
+  it("does not carry trust to a paused frame or a duplicate", () => {
+    setup();
+    const other = createFrame("<p>other</p>");
+    API.setSelectedElements([getFrames()[0] as NonDeletedExcalidrawElement]);
+    act(() => {
+      h.app.actionManager.executeAction(actionDuplicateSelection);
+    });
+    const frames = getFrames();
+    expect(frames).toHaveLength(3);
+    const trusted = frames.map((frame) => h.app.isHtmlFrameTrusted(frame));
+    expect(trusted.filter(Boolean)).toHaveLength(1);
+    expect(
+      h.app.isHtmlFrameTrusted(frames.find(({ id }) => id === other.id)!),
+    ).toBe(false);
   });
 });
 

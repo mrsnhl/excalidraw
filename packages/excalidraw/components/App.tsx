@@ -503,6 +503,9 @@ import type { Action, ActionResult } from "../actions/types";
  */
 const HTML_FRAME_ACTIVATION_DELAY_MS = 500;
 
+/** how many documents of one HTML frame stay trusted */
+const MAX_TRUSTED_HTML_FRAME_DOCUMENTS = 20;
+
 const AppContext = React.createContext<AppClassProperties>(null!);
 const AppPropsContext = React.createContext<AppProps>(null!);
 
@@ -688,10 +691,11 @@ class App extends React.Component<AppProps, AppState> {
    **/
   private embedsValidationStatus: EmbedsValidationStatus = new Map();
   /**
-   * HTML frame markup that may run in this session, by frame id: markup the
-   * user created, applied in the editor, or chose to run. Other markup (from
-   * a file, a collaborator or the library) shows a static snapshot until
-   * the user runs it.
+   * HTML frame documents that may run in this session, by frame id: the
+   * markup with its variables resolved, as the user created, applied, ran or
+   * changed it with a local action. Any other document (from a file, a
+   * collaborator, the library, or a variable value set elsewhere) shows a
+   * static snapshot until the user runs it.
    */
   private trustedHtmlFrames = new Map<ExcalidrawElement["id"], Set<string>>();
   private pausedHtmlFrameSnapshots = new Map<
@@ -1699,6 +1703,13 @@ class App extends React.Component<AppProps, AppState> {
         : 100;
     this.ownerWindow.clearTimeout(this.iframeActivationTimer);
     this.iframeActivationTimer = this.ownerWindow.setTimeout(() => {
+      // the element can be deleted, or paused by a remote change, meanwhile
+      const current = this.scene
+        .getNonDeletedElementsMap()
+        .get(iframeLikeElement.id);
+      if (!current || !this.isIframeLikeInteractive(current)) {
+        return;
+      }
       this.setState({
         activeEmbeddable: { element: iframeLikeElement, state: "active" },
         selectedElementIds: { [iframeLikeElement.id]: true },
@@ -1799,26 +1810,56 @@ class App extends React.Component<AppProps, AppState> {
     );
   };
 
-  /** lets the markup of an HTML frame run in this session */
+  /** the document an HTML frame runs: its markup with variables resolved */
+  private getHtmlFrameDocument(html: string) {
+    return resolveVariables(html, this.scene.getVariables().map);
+  }
+
+  /**
+   * Lets the markup of an HTML frame run in this session, with the current
+   * variable values.
+   */
   public trustHtmlFrame = (
     elementId: ExcalidrawHtmlElement["id"],
     html: string,
   ) => {
+    const document = this.getHtmlFrameDocument(html);
     let trusted = this.trustedHtmlFrames.get(elementId);
     if (!trusted) {
       trusted = new Set();
       this.trustedHtmlFrames.set(elementId, trusted);
     }
-    if (!trusted.has(html)) {
-      trusted.add(html);
-      this.pausedHtmlFrameSnapshots.delete(elementId);
-      this.triggerRender();
+    if (trusted.has(document)) {
+      return;
     }
+    trusted.add(document);
+    // keep the recent documents only (undo goes back to them)
+    if (trusted.size > MAX_TRUSTED_HTML_FRAME_DOCUMENTS) {
+      trusted.delete(trusted.values().next().value!);
+    }
+    this.pausedHtmlFrameSnapshots.delete(elementId);
+    this.triggerRender();
   };
 
-  /** whether the current markup of an HTML frame may run in this session */
+  /** whether the current document of an HTML frame may run in this session */
   public isHtmlFrameTrusted = (element: ExcalidrawHtmlElement) =>
-    !!this.trustedHtmlFrames.get(element.id)?.has(element.html);
+    !!this.trustedHtmlFrames
+      .get(element.id)
+      ?.has(this.getHtmlFrameDocument(element.html));
+
+  /** the HTML frames whose current document may run */
+  private getRunningHtmlFrameIds() {
+    const ids = new Set<ExcalidrawElement["id"]>();
+    if (!this.trustedHtmlFrames.size) {
+      return ids;
+    }
+    for (const element of this.scene.getNonDeletedElements()) {
+      if (isHtmlElement(element) && this.isHtmlFrameTrusted(element)) {
+        ids.add(element.id);
+      }
+    }
+    return ids;
+  }
 
   /** the static snapshot a paused HTML frame shows, cached per markup */
   private getPausedHtmlFrameSnapshot(
@@ -1854,6 +1895,8 @@ class App extends React.Component<AppProps, AppState> {
             draggable={false}
           />
         )}
+        {/* in a corner: a click to select or a double-click to edit the
+            frame lands in its center, and must not run the markup */}
         <button
           type="button"
           className="excalidraw__html-frame-paused__run"
@@ -3347,7 +3390,20 @@ class App extends React.Component<AppProps, AppState> {
 
     let editingTextElement: AppState["editingTextElement"] | null = null;
     if (actionResult.elements) {
+      // a local action (e.g. renaming a variable) keeps the user's running
+      // HTML frames running. Undo and redo (`NEVER`) go back to documents
+      // that were trusted before, or pause.
+      const runningHtmlFrameIds =
+        actionResult.captureUpdate !== CaptureUpdateAction.NEVER
+          ? this.getRunningHtmlFrameIds()
+          : null;
       this.scene.replaceAllElements(actionResult.elements);
+      runningHtmlFrameIds?.forEach((id) => {
+        const element = this.scene.getNonDeletedElementsMap().get(id);
+        if (isHtmlElement(element)) {
+          this.trustHtmlFrame(id, element.html);
+        }
+      });
       didUpdate = true;
     }
 
@@ -3764,6 +3820,8 @@ class App extends React.Component<AppProps, AppState> {
     (opts?: { resetLoadingState: boolean }) => {
       this.elementRenderOverrides = new Map();
       this.elementRenderOffsets = new Map();
+      this.trustedHtmlFrames.clear();
+      this.pausedHtmlFrameSnapshots.clear();
       this.scene.replaceAllElements([]);
       this.setState((state) => ({
         ...getDefaultAppState(),
