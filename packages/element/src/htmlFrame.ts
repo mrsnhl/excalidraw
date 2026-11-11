@@ -134,6 +134,8 @@ export const buildHtmlSnapshotSvg = (
   );
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
+    // a white page, as the live frame has
+    `<rect width="${width}" height="${height}" fill="#ffffff"/>` +
     `<foreignObject x="0" y="0" width="${width}" height="${height}">${xhtml}</foreignObject>` +
     `</svg>`;
   // element names can still be invalid XML (e.g. `<my:tag>`): a snapshot

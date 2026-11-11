@@ -1,5 +1,11 @@
 .excalidraw {
   .HtmlFrameDialog {
+    // fullscreen (narrow screens): the island needs a definite height, or
+    // the flex panels below collapse to nothing
+    &.Dialog--fullscreen .Island {
+      height: 100%;
+    }
+
     .Dialog__content {
       display: flex;
       flex-direction: column;
@@ -37,7 +43,8 @@
       translate: -50% -50%;
       border: 1px solid var(--dialog-border-color);
       border-radius: var(--border-radius-md);
-      background: transparent;
+      // like a browser page, and the same in each theme
+      background: #ffffff;
     }
 
     &__preview--paused {

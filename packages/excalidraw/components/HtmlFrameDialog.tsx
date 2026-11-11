@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import {
   debounce,
@@ -71,12 +71,13 @@ export const HtmlFrameDialog = ({
     }
   }, [frame, onClose]);
 
-  const stageRef = useRef<HTMLDivElement>(null);
+  // the stage mounts after this component (the Dialog renders in a portal),
+  // so it is state, not a ref object: the measuring effect must re-run then
+  const [stage, setStage] = useState<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>(
     { width: 0, height: 0 },
   );
   useLayoutEffect(() => {
-    const stage = stageRef.current;
     if (!stage) {
       return;
     }
@@ -90,7 +91,7 @@ export const HtmlFrameDialog = ({
     const observer = new ResizeObserver(measure);
     observer.observe(stage);
     return () => observer.disconnect();
-  }, [app]);
+  }, [app, stage]);
 
   if (!frame) {
     return null;
@@ -177,7 +178,7 @@ export const HtmlFrameDialog = ({
           renderSubmitShortcut={() => <TTDDialogSubmitShortcut />}
         >
           <div className="ttd-dialog-output-wrapper HtmlFrameDialog__stage">
-            <div ref={stageRef} className="HtmlFrameDialog__stage-inner">
+            <div ref={setStage} className="HtmlFrameDialog__stage-inner">
               {previewRuns ? (
                 <iframe
                   className="HtmlFrameDialog__preview"
@@ -198,7 +199,15 @@ export const HtmlFrameDialog = ({
                   width={box.width}
                   height={box.height}
                   scale={scale}
-                  onRun={() => setPreviewRuns(true)}
+                  onRun={() => {
+                    setPreviewRuns(true);
+                    // the Run button unmounts, which would drop the focus
+                    // to <body>, and Escape / Ctrl+Enter would stop working
+                    stage
+                      ?.closest<HTMLElement>(".HtmlFrameDialog")
+                      ?.querySelector<HTMLElement>(".cm-content, textarea")
+                      ?.focus();
+                  }}
                 />
               )}
             </div>

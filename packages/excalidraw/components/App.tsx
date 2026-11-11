@@ -2258,7 +2258,9 @@ class App extends React.Component<AppProps, AppState> {
                       ) : (
                         <iframe
                           ref={(ref) => this.cacheEmbeddableRef(el, ref)}
-                          className="excalidraw__embeddable"
+                          className={clsx("excalidraw__embeddable", {
+                            "excalidraw__html-frame": isHtmlElement(el),
+                          })}
                           srcDoc={
                             src?.type === "document"
                               ? src.srcdoc(this.state.theme)

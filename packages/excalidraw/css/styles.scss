@@ -1070,6 +1070,13 @@ body.excalidraw-cursor-resize * {
 
   // an HTML frame whose scripts wait for the user: a static snapshot and a
   // "Run" button, styled like the other overlays on embeds
+  // an HTML document has a white page in each theme, as in a browser: the
+  // default markup is dark text, which is unreadable on the dark canvas
+  .excalidraw__html-frame,
+  .excalidraw__html-frame-paused {
+    background: #ffffff;
+  }
+
   .excalidraw__html-frame-paused {
     position: relative;
     width: 100%;
