@@ -31,6 +31,7 @@ import {
   EmbedIcon,
   stickyNoteToolIcon,
   tableToolIcon,
+  htmlToolIcon,
 } from "./icons";
 
 import type {
@@ -125,6 +126,9 @@ export const TOOLS = defineTools({
   },
   table: {
     icon: tableToolIcon,
+  },
+  html: {
+    icon: htmlToolIcon,
   },
   image: {
     icon: ImageIcon,
@@ -340,6 +344,7 @@ export const FreedrawToolButton = createToolButton("freedraw");
 export const TextToolButton = createToolButton("text");
 export const StickyNoteToolButton = createToolButton("stickynote");
 export const TableToolButton = createToolButton("table");
+export const HtmlToolButton = createToolButton("html");
 export const ImageToolButton = createToolButton("image");
 export const EraserToolButton = createToolButton("eraser");
 export const FrameToolButton = createToolButton("frame");

@@ -36,6 +36,7 @@ import { SelectedShapeActions, CompactShapeActions } from "./Actions";
 import { LoadingMessage } from "./LoadingMessage";
 import { MobileMenu } from "./MobileMenu";
 import { PasteChartDialog } from "./PasteChartDialog";
+import { HtmlFrameDialog } from "./HtmlFrameDialog";
 import { Section } from "./Section";
 import Stack from "./Stack";
 import { UserList } from "./UserList";
@@ -196,6 +197,11 @@ const LayerUI = ({
       };
 
   const TunnelsJotaiProvider = tunnels.tunnelsJotai.Provider;
+
+  const closeHtmlFrameDialog = React.useCallback(
+    () => setAppState({ openDialog: null }),
+    [setAppState],
+  );
 
   const [eyeDropperState, setEyeDropperState] = useAtom(activeEyeDropperAtom);
 
@@ -613,6 +619,12 @@ const LayerUI = ({
               openDialog: null,
             })
           }
+        />
+      )}
+      {defaultUIEnabled && appState.openDialog?.name === "htmlEditor" && (
+        <HtmlFrameDialog
+          elementId={appState.openDialog.elementId}
+          onClose={closeHtmlFrameDialog}
         />
       )}
       {editorInterface.formFactor === "phone" && (

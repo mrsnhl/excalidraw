@@ -5,6 +5,7 @@ export const hasBackground = (type: ElementOrToolType) =>
   type === "table" ||
   type === "stickynote" ||
   type === "iframe" ||
+  type === "html" ||
   type === "embeddable" ||
   type === "ellipse" ||
   type === "diamond" ||
@@ -28,12 +29,14 @@ export const hasStrokeColor = (type: ElementOrToolType) =>
   type === "line" ||
   type === "text" ||
   type === "embeddable" ||
+  type === "html" ||
   type === "autoshape";
 
 export const hasStrokeWidth = (type: ElementOrToolType) =>
   type === "rectangle" ||
   type === "table" ||
   type === "iframe" ||
+  type === "html" ||
   type === "embeddable" ||
   type === "ellipse" ||
   type === "diamond" ||
@@ -46,6 +49,7 @@ export const hasStrokeStyle = (type: ElementOrToolType) =>
   type === "rectangle" ||
   type === "table" ||
   type === "iframe" ||
+  type === "html" ||
   type === "embeddable" ||
   type === "ellipse" ||
   type === "diamond" ||
@@ -62,6 +66,7 @@ export const canChangeRoundness = (type: ElementOrToolType) =>
   type === "rectangle" ||
   type === "table" ||
   type === "iframe" ||
+  type === "html" ||
   type === "embeddable" ||
   type === "line" ||
   type === "diamond" ||

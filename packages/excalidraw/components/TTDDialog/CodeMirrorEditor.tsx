@@ -28,6 +28,8 @@ export interface CodeMirrorEditorProps {
   placeholder?: string;
   theme: Theme;
   errorLine?: number | null;
+  /** syntax highlighting; "plain" has none (default: "mermaid") */
+  language?: "mermaid" | "plain";
 }
 
 // ---- Dark theme ----
@@ -126,6 +128,7 @@ const CodeMirrorEditor = ({
   placeholder,
   theme,
   errorLine,
+  language = "mermaid",
 }: CodeMirrorEditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -170,7 +173,7 @@ const CodeMirrorEditor = ({
           EditorView.lineWrapping,
           themeCompartment.of(getThemeExtensions(theme)),
           errorLineCompartmentRef.current.of([]),
-          mermaidLite(),
+          ...(language === "mermaid" ? [mermaidLite()] : []),
           drawSelection({ drawRangeCursor: true }),
           ...(placeholder ? [cmPlaceholder(placeholder)] : []),
         ],

@@ -19,6 +19,7 @@ import {
   newFrameElement,
   newFreeDrawElement,
   newIframeElement,
+  newHtmlElement,
   newImageElement,
   newLinearElement,
   newMagicFrameElement,
@@ -49,6 +50,7 @@ import type {
   ExcalidrawStickyNoteElement,
   ExcalidrawVariableElement,
   ExcalidrawTableElement,
+  ExcalidrawHtmlElement,
   FixedSegment,
   NonDeleted,
   NonDeletedExcalidrawElement,
@@ -219,6 +221,7 @@ export class API {
       : never;
     boundElements?: ExcalidrawGenericElement["boundElements"];
     // table props
+    html?: T extends "html" ? string : never;
     rows?: T extends "table" ? number : never;
     columns?: T extends "table" ? number : never;
     cells?: T extends "table" ? ExcalidrawTableElement["cells"] : never;
@@ -280,6 +283,8 @@ export class API {
       ? ExcalidrawVariableElement
       : T extends "table"
       ? ExcalidrawTableElement
+      : T extends "html"
+      ? ExcalidrawHtmlElement
       : ExcalidrawGenericElement
   > => {
     let element: Mutable<ExcalidrawElement> = null!;
@@ -355,6 +360,13 @@ export class API {
       case "iframe":
         element = newIframeElement({
           type: "iframe",
+          ...base,
+        });
+        break;
+      case "html":
+        element = newHtmlElement({
+          type: "html",
+          html: rest.html,
           ...base,
         });
         break;

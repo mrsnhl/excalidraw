@@ -434,6 +434,7 @@ const _isRectanguloidElement = (
       element.type === "table" ||
       element.type === "image" ||
       element.type === "iframe" ||
+      element.type === "html" ||
       element.type === "embeddable" ||
       element.type === "frame" ||
       element.type === "magicframe" ||

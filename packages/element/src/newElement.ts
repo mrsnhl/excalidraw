@@ -57,6 +57,7 @@ import type {
   ExcalidrawEmbeddableElement,
   ExcalidrawMagicFrameElement,
   ExcalidrawIframeElement,
+  ExcalidrawHtmlElement,
   ElementsMap,
   ExcalidrawArrowElement,
   ExcalidrawElbowArrowElement,
@@ -318,6 +319,18 @@ export const newIframeElement = (
 ): NonDeleted<ExcalidrawIframeElement> => {
   return {
     ..._newElementBase<ExcalidrawIframeElement>("iframe", opts),
+  };
+};
+
+export const newHtmlElement = (
+  opts: {
+    type: "html";
+    html?: string;
+  } & ElementConstructorOpts,
+): NonDeleted<ExcalidrawHtmlElement> => {
+  return {
+    ..._newElementBase<ExcalidrawHtmlElement>("html", opts),
+    html: opts.html ?? "",
   };
 };
 

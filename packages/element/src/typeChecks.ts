@@ -22,6 +22,7 @@ import type {
   ExcalidrawFrameLikeElement,
   ExcalidrawElementType,
   ExcalidrawIframeElement,
+  ExcalidrawHtmlElement,
   ExcalidrawIframeLikeElement,
   ExcalidrawMagicFrameElement,
   ExcalidrawArrowElement,
@@ -62,8 +63,17 @@ export const isIframeLikeElement = <T extends ExcalidrawElement>(
   element: T | null,
 ): element is T & ExcalidrawIframeLikeElement => {
   return (
-    !!element && (element.type === "iframe" || element.type === "embeddable")
+    !!element &&
+    (element.type === "iframe" ||
+      element.type === "embeddable" ||
+      element.type === "html")
   );
+};
+
+export const isHtmlElement = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawHtmlElement => {
+  return !!element && element.type === "html";
 };
 
 export const isTextElement = <T extends ExcalidrawElement>(
@@ -209,6 +219,7 @@ export const isBindableElement = <T extends ExcalidrawElement>(
       element.type === "ellipse" ||
       element.type === "image" ||
       element.type === "iframe" ||
+      element.type === "html" ||
       element.type === "embeddable" ||
       element.type === "frame" ||
       element.type === "magicframe" ||
@@ -227,6 +238,7 @@ export const isRectanguloidElement = <T extends ExcalidrawElement>(
       element.type === "diamond" ||
       element.type === "image" ||
       element.type === "iframe" ||
+      element.type === "html" ||
       element.type === "embeddable" ||
       element.type === "frame" ||
       element.type === "magicframe" ||
@@ -247,6 +259,7 @@ export const isRectangularElement = <T extends ExcalidrawElement>(
       element.type === "image" ||
       element.type === "text" ||
       element.type === "iframe" ||
+      element.type === "html" ||
       element.type === "embeddable" ||
       element.type === "frame" ||
       element.type === "magicframe" ||
@@ -283,6 +296,7 @@ export const isExcalidrawElement = (
     case "stickynote":
     case "table":
     case "iframe":
+    case "html":
     case "embeddable":
     case "ellipse":
     case "arrow":
@@ -342,6 +356,7 @@ export const isUsingAdaptiveRadius = (type: string) =>
   type === "rectangle" ||
   type === "embeddable" ||
   type === "iframe" ||
+  type === "html" ||
   type === "table" ||
   type === "image";
 

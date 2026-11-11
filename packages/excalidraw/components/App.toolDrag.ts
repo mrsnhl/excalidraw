@@ -12,8 +12,13 @@ import {
 } from "@excalidraw/common";
 
 import {
+  DEFAULT_HTML_FRAME_HEIGHT,
+  DEFAULT_HTML_FRAME_MARKUP,
+  DEFAULT_HTML_FRAME_WIDTH,
+  isHtmlElement,
   isStickyNoteElement,
   isTableElement,
+  newHtmlElement,
   newStickyNoteElement,
   newTableElement,
 } from "@excalidraw/element";
@@ -111,6 +116,35 @@ export const DRAGGABLE_TOOLS: Partial<Record<ToolType, DraggableTool>> = {
     onDrop: (app, element) => {
       if (isTableElement(element)) {
         app.table.startCellEditing(element, 0, 0);
+      }
+    },
+  },
+  html: {
+    createElement: (app, center) => {
+      const { state } = app;
+      return newHtmlElement({
+        type: "html",
+        html: DEFAULT_HTML_FRAME_MARKUP,
+        ...centered(
+          center,
+          DEFAULT_HTML_FRAME_WIDTH,
+          DEFAULT_HTML_FRAME_HEIGHT,
+        ),
+        strokeColor: state.currentItemStrokeColor,
+        backgroundColor: state.currentItemBackgroundColor,
+        fillStyle: state.currentItemFillStyle,
+        strokeWidth: app.getCurrentItemStrokeWidth("html"),
+        strokeStyle: state.currentItemStrokeStyle,
+        roughness: state.currentItemRoughness,
+        opacity: state.currentItemOpacity,
+        roundness: app.getCurrentItemRoundness("html"),
+        locked: false,
+        frameId: app.getTopLayerFrameAtSceneCoords(center)?.id ?? null,
+      });
+    },
+    onDrop: (app, element) => {
+      if (isHtmlElement(element)) {
+        app.openHtmlFrameEditor(element);
       }
     },
   },

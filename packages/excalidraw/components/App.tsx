@@ -112,6 +112,10 @@ import {
   newMagicFrameElement,
   newStickyNoteElement,
   newTableElement,
+  newHtmlElement,
+  DEFAULT_HTML_FRAME_MARKUP,
+  DEFAULT_HTML_FRAME_WIDTH,
+  DEFAULT_HTML_FRAME_HEIGHT,
   newIframeElement,
   newArrowElement,
   newElement,
@@ -132,6 +136,9 @@ import {
   isLinearElementType,
   isUsingAdaptiveRadius,
   isIframeElement,
+  isHtmlElement,
+  getHtmlFrameDocument,
+  HTML_FRAME_SANDBOX,
   isIframeLikeElement,
   isMagicFrameElement,
   isTextBindableContainer,
@@ -233,6 +240,7 @@ import type {
   ExcalidrawFrameLikeElement,
   ExcalidrawMagicFrameElement,
   ExcalidrawIframeLikeElement,
+  ExcalidrawHtmlElement,
   IframeData,
   ExcalidrawIframeElement,
   ExcalidrawEmbeddableElement,
@@ -292,6 +300,7 @@ import {
   actionTableDeleteRow,
   actionTableDeleteColumn,
   actionToggleTableHeaderRow,
+  actionEditHtmlFrame,
 } from "../actions";
 import { actionWrapTextInContainer } from "../actions/actionBoundText";
 import { actionPaste } from "../actions/actionClipboard";
@@ -1758,6 +1767,21 @@ class App extends React.Component<AppProps, AppState> {
     );
   };
 
+  /** opens the HTML editor dialog for an HTML frame */
+  public openHtmlFrameEditor(element: ExcalidrawHtmlElement) {
+    if (this.state.viewModeEnabled || element.locked) {
+      return;
+    }
+    this.setState((prevState) => ({
+      activeEmbeddable: null,
+      selectedElementIds: makeNextSelectedElementIds(
+        { [element.id]: true },
+        prevState,
+      ),
+      openDialog: { name: "htmlEditor", elementId: element.id },
+    }));
+  }
+
   private isIframeLikeElementCenter(
     el: ExcalidrawIframeLikeElement | null,
     event: React.PointerEvent<HTMLElement> | PointerEvent,
@@ -1805,7 +1829,7 @@ class App extends React.Component<AppProps, AppState> {
 
           this.updateEmbedValidationStatus(element, validated);
         }
-      } else if (isIframeElement(element)) {
+      } else if (isIframeElement(element) || isHtmlElement(element)) {
         iframeLikes.add(element.id);
       }
       return false;
@@ -1834,7 +1858,8 @@ class App extends React.Component<AppProps, AppState> {
         (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
           (isEmbeddableElement(el) &&
             this.embedsValidationStatus.get(el.id) === true) ||
-          isIframeElement(el),
+          isIframeElement(el) ||
+          isHtmlElement(el),
       );
 
     return (
@@ -1970,6 +1995,16 @@ class App extends React.Component<AppProps, AppState> {
                 },
               } as const;
             }
+          } else if (isHtmlElement(el)) {
+            const html = getHtmlFrameDocument(
+              el,
+              this.scene.getVariables().map,
+            );
+            src = {
+              intrinsicSize: { w: el.width, h: el.height },
+              type: "document",
+              srcdoc: () => html,
+            } as const;
           } else {
             src = getEmbedLink(toValidURL(el.link || ""));
           }
@@ -2085,15 +2120,27 @@ class App extends React.Component<AppProps, AppState> {
                         }
                         // https://stackoverflow.com/q/18470015
                         scrolling="no"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title="Excalidraw Embedded Content"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen={true}
-                        sandbox={`${
-                          src?.sandbox?.allowSameOrigin
-                            ? "allow-same-origin"
-                            : ""
-                        } allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads`}
+                        title={
+                          isHtmlElement(el)
+                            ? t("htmlFrame.frameTitle")
+                            : "Excalidraw Embedded Content"
+                        }
+                        {...(isHtmlElement(el)
+                          ? {
+                              referrerPolicy: "no-referrer",
+                              sandbox: HTML_FRAME_SANDBOX,
+                            }
+                          : {
+                              referrerPolicy: "no-referrer-when-downgrade",
+                              allow:
+                                "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+                              allowFullScreen: true,
+                              sandbox: `${
+                                src?.sandbox?.allowSameOrigin
+                                  ? "allow-same-origin"
+                                  : ""
+                              } allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads`,
+                            })}
                       />
                     )}
                   </div>
@@ -5596,6 +5643,13 @@ class App extends React.Component<AppProps, AppState> {
             this.setState({
               editingFrame: selectedElement.id,
             });
+          } else if (
+            isHtmlElement(selectedElement) &&
+            !selectedElement.locked
+          ) {
+            this.openHtmlFrameEditor(selectedElement);
+            event.preventDefault();
+            return;
           }
         }
       }
@@ -6463,6 +6517,11 @@ class App extends React.Component<AppProps, AppState> {
     this.cursor.reset();
     if (!this.state.viewModeEnabled) {
       const hitElement = this.getElementAtPosition(sceneX, sceneY);
+
+      if (isHtmlElement(hitElement) && !hitElement.locked) {
+        this.openHtmlFrameEditor(hitElement);
+        return;
+      }
 
       if (isIframeLikeElement(hitElement)) {
         if (this.isIframeLikeInteractive(hitElement)) {
@@ -8882,7 +8941,8 @@ class App extends React.Component<AppProps, AppState> {
       | "diamond"
       | "ellipse"
       | "iframe"
-      | "embeddable",
+      | "embeddable"
+      | "html",
   ) {
     return this.state.currentItemRoundness === "round"
       ? {
@@ -8905,7 +8965,8 @@ class App extends React.Component<AppProps, AppState> {
       | ExcalidrawGenericElement["type"]
       | "embeddable"
       | "stickynote"
-      | "table",
+      | "table"
+      | "html",
     pointerDownState: PointerDownState,
   ): void => {
     const [gridX, gridY] = getGridPoint(
@@ -8956,6 +9017,12 @@ class App extends React.Component<AppProps, AppState> {
     } else if (elementType === "table") {
       element = newTableElement({
         type: "table",
+        ...baseElementAttributes,
+      });
+    } else if (elementType === "html") {
+      element = newHtmlElement({
+        type: "html",
+        html: DEFAULT_HTML_FRAME_MARKUP,
         ...baseElementAttributes,
       });
     } else {
@@ -10045,6 +10112,58 @@ class App extends React.Component<AppProps, AppState> {
           sceneY: newElement.y + newElement.height / 2,
           container: newElement,
         });
+        return;
+      }
+
+      if (newElement && isHtmlElement(newElement)) {
+        // a click (under the drag threshold) gets the default size, centered
+        // on the pointer. A drag keeps the size it was dragged to
+        const zoom = this.state.zoom.value;
+        if (
+          newElement.width * zoom < DRAGGING_THRESHOLD &&
+          newElement.height * zoom < DRAGGING_THRESHOLD
+        ) {
+          const [x, y] = getGridPoint(
+            pointerDownState.origin.x - DEFAULT_HTML_FRAME_WIDTH / 2,
+            pointerDownState.origin.y - DEFAULT_HTML_FRAME_HEIGHT / 2,
+            childEvent[KEYS.CTRL_OR_CMD] ? null : this.getEffectiveGridSize(),
+          );
+          this.scene.mutateElement(
+            newElement,
+            {
+              x,
+              y,
+              width: DEFAULT_HTML_FRAME_WIDTH,
+              height: DEFAULT_HTML_FRAME_HEIGHT,
+            },
+            { informMutation: false, isDragging: false },
+          );
+        }
+
+        this.store.scheduleCapture();
+        this.scene.triggerUpdate();
+
+        if (activeTool.locked) {
+          this.setState((prevState) => ({
+            newElement: null,
+            selectedElementIds: makeNextSelectedElementIds({}, prevState),
+          }));
+          this.cursor.applyForTool();
+          return;
+        }
+
+        this.cursor.reset();
+        this.setState((prevState) => ({
+          newElement: null,
+          selectedElementIds: makeNextSelectedElementIds(
+            { [newElement.id]: true },
+            prevState,
+          ),
+          activeTool: updateActiveTool(this.state, {
+            type: this.state.preferredSelectionTool.type,
+          }),
+          openDialog: { name: "htmlEditor", elementId: newElement.id },
+        }));
         return;
       }
 
@@ -11469,6 +11588,8 @@ class App extends React.Component<AppProps, AppState> {
       CONTEXT_MENU_SEPARATOR,
       actionAddToLibrary,
       ...zIndexActions,
+      CONTEXT_MENU_SEPARATOR,
+      actionEditHtmlFrame,
       CONTEXT_MENU_SEPARATOR,
       actionToggleTableHeaderRow,
       actionTableInsertRowAbove,

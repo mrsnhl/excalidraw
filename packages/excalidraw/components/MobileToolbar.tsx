@@ -35,6 +35,7 @@ import {
   MagicIcon,
   stickyNoteToolIcon,
   tableToolIcon,
+  htmlToolIcon,
 } from "./icons";
 
 import "./ToolIcon.scss";
@@ -82,6 +83,7 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
   const bucketFillToolSelected = activeTool.type === "bucketfill";
   const stickyNoteToolSelected = activeTool.type === "stickynote";
   const tableToolSelected = activeTool.type === "table";
+  const htmlToolSelected = activeTool.type === "html";
 
   const { TTDDialogTriggerTunnel } = useTunnels();
 
@@ -120,6 +122,7 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
       "text",
       "stickynote",
       "table",
+      "html",
       "frame",
       "embeddable",
       "laser",
@@ -147,6 +150,8 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
       ? stickyNoteToolIcon
       : activeTool.type === "table"
       ? tableToolIcon
+      : activeTool.type === "html"
+      ? htmlToolIcon
       : activeTool.type === "embeddable"
       ? EmbedIcon
       : activeTool.type === "laser"
@@ -306,6 +311,15 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
             disabled={isToolButtonDisabled(app, "table")}
           >
             {t("toolBar.table")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={() => app.setActiveTool({ type: "html" })}
+            icon={htmlToolIcon}
+            data-testid="toolbar-html"
+            selected={htmlToolSelected}
+            disabled={isToolButtonDisabled(app, "html")}
+          >
+            {t("toolBar.html")}
           </DropdownMenu.Item>
 
           {!showFrameToolOutside && (

@@ -579,6 +579,7 @@ export const TOOL_TYPE = {
   magicframe: "magicframe",
   stickynote: "stickynote",
   table: "table",
+  html: "html",
   embeddable: "embeddable",
   laser: "laser",
   autoshape: "autoshape",

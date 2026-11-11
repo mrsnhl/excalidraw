@@ -211,6 +211,7 @@ export const SelectedShapeActions = ({
             {renderAction("ungroup")}
             {predicates.link && renderAction("hyperlink")}
             {predicates.cropEditor && renderAction("cropEditor")}
+            {predicates.htmlEditor && renderAction("editHtmlFrame")}
             {predicates.lineEditor && renderAction("toggleLinearEditor")}
           </div>
         </fieldset>
@@ -571,6 +572,7 @@ const CombinedExtraActions = ({
                   {renderAction("ungroup")}
                   {predicates.linkSingleOnly && renderAction("hyperlink")}
                   {predicates.cropEditor && renderAction("cropEditor")}
+                  {predicates.htmlEditor && renderAction("editHtmlFrame")}
                   {showDuplicate && renderAction("duplicateSelection")}
                   {showDelete && renderAction("deleteSelectedElements")}
                 </div>

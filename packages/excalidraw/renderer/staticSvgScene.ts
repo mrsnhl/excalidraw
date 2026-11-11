@@ -22,6 +22,8 @@ import { hashString } from "@excalidraw/element";
 import { getUncroppedWidthAndHeight } from "@excalidraw/element";
 import {
   createPlaceholderEmbeddableLabel,
+  getHtmlFrameContentBox,
+  getHtmlSnapshotDataURL,
   getEmbedLink,
 } from "@excalidraw/element";
 import { LinearElementEditor } from "@excalidraw/element";
@@ -401,6 +403,81 @@ const renderElementToSvg = (
       );
 
       addToRoot(g || node, element);
+      break;
+    }
+    case "html": {
+      // the frame's border and fill, then a snapshot of its document
+      const shape = ShapeCache.generateElementShape(element, renderConfig);
+      const node = roughSVGDrawWithPrecision(
+        rsvg,
+        shape,
+        MAX_DECIMALS_FOR_SVG_EXPORT,
+      );
+      if (opacity !== 1) {
+        node.setAttribute("stroke-opacity", `${opacity}`);
+        node.setAttribute("fill-opacity", `${opacity}`);
+      }
+      node.setAttribute("stroke-linecap", "round");
+      node.setAttribute(
+        "transform",
+        `translate(${offsetX || 0} ${
+          offsetY || 0
+        }) rotate(${degree} ${cx} ${cy})`,
+      );
+
+      const doc = svgRoot.ownerDocument;
+      const src = getHtmlSnapshotDataURL(element, renderConfig.variables, doc);
+      if (src) {
+        const box = getHtmlFrameContentBox(element);
+        // a nested image keeps the document's styles out of the export
+        const image = doc.createElementNS(SVG_NS, "image");
+        image.setAttribute("x", `${box.x}`);
+        image.setAttribute("y", `${box.y}`);
+        image.setAttribute("width", `${box.width}`);
+        image.setAttribute("height", `${box.height}`);
+        image.setAttribute("preserveAspectRatio", "none");
+        image.setAttribute("href", src);
+        if (opacity !== 1) {
+          image.setAttribute("opacity", `${opacity}`);
+        }
+        if (element.roundness) {
+          const clipPath = doc.createElementNS(SVG_NS, "clipPath");
+          clipPath.id = `html-clipPath-${element.id}`;
+          clipPath.setAttribute("clipPathUnits", "userSpaceOnUse");
+          const clipRect = doc.createElementNS(SVG_NS, "rect");
+          const radius = getCornerRadius(
+            Math.min(box.width, box.height),
+            element,
+          );
+          clipRect.setAttribute("x", `${box.x}`);
+          clipRect.setAttribute("y", `${box.y}`);
+          clipRect.setAttribute("width", `${box.width}`);
+          clipRect.setAttribute("height", `${box.height}`);
+          clipRect.setAttribute("rx", `${radius}`);
+          clipRect.setAttribute("ry", `${radius}`);
+          clipPath.appendChild(clipRect);
+          node.appendChild(clipPath);
+          image.setAttribute("clip-path", `url(#${clipPath.id})`);
+        }
+        node.appendChild(image);
+        addToRoot(node, element);
+      } else {
+        addToRoot(node, element);
+        const label = createPlaceholderEmbeddableLabel(
+          element,
+          renderConfig.renderEnvironment,
+        );
+        renderElementToSvg(
+          label,
+          elementsMap,
+          rsvg,
+          root,
+          files,
+          label.x + offset.x - element.x,
+          label.y + offset.y - element.y,
+          renderConfig,
+        );
+      }
       break;
     }
     case "iframe":

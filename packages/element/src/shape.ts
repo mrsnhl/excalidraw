@@ -51,6 +51,7 @@ import {
   canBecomePolygon,
   isElbowArrow,
   isEmbeddableElement,
+  isHtmlElement,
   isIframeElement,
   isIframeLikeElement,
   isLinearElement,
@@ -233,6 +234,7 @@ export const generateRoughOptions = (
     case "rectangle":
     case "table":
     case "iframe":
+    case "html":
     case "embeddable":
     case "diamond":
     case "ellipse": {
@@ -271,6 +273,8 @@ const modifyIframeLikeForRoughOptions = (
 ) => {
   if (
     isIframeLikeElement(element) &&
+    // an HTML frame exports as its snapshot, not as a grey placeholder
+    !isHtmlElement(element) &&
     (isExporting ||
       (isEmbeddableElement(element) &&
         embedsValidationStatus?.get(element.id) !== true)) &&
@@ -846,6 +850,7 @@ const _generateElementShape = (
   switch (element.type) {
     case "rectangle":
     case "iframe":
+    case "html":
     case "embeddable": {
       let shape: ElementShapes[typeof element.type];
       // this is for rendering the stroke/bg of the embeddable, especially
@@ -1220,6 +1225,7 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
     case "embeddable":
     case "image":
     case "iframe":
+    case "html":
     case "text":
     case "selection":
       return getPolygonShape(element);

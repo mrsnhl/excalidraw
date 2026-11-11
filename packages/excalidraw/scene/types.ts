@@ -69,6 +69,8 @@ export type StaticCanvasRenderConfig = {
   variablesVersion?: string;
   /** the table cell being edited in place, its text is drawn by the editor */
   editingTableCell?: { elementId: string; row: number; col: number } | null;
+  /** export only: snapshot images of the HTML frames, by element id */
+  htmlSnapshots?: ReadonlyMap<string, HTMLImageElement>;
 };
 
 export type SVGRenderConfig = {
@@ -203,6 +205,7 @@ export type ElementShapes = {
   diamond: Drawable;
   iframe: Drawable;
   embeddable: Drawable;
+  html: Drawable;
   freedraw: (Drawable | SVGPathString)[];
   arrow: Drawable[];
   line: Drawable[];

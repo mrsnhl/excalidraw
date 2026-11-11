@@ -42,6 +42,7 @@ export const distanceToElement = (
     case "image":
     case "text":
     case "iframe":
+    case "html":
     case "embeddable":
     case "frame":
     case "magicframe":

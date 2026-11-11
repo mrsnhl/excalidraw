@@ -11,6 +11,7 @@ import { getBoundTextElement } from "@excalidraw/element";
 import {
   isEmbeddableElement,
   isIframeLikeElement,
+  isHtmlElement,
   isTextElement,
 } from "@excalidraw/element";
 import {
@@ -550,7 +551,12 @@ const _renderStaticScene = ({
                 renderConfig.embedsValidationStatus.get(element.id) !==
                   true)) &&
             element.width &&
-            element.height
+            element.height &&
+            // a loaded snapshot replaces the placeholder
+            !(
+              isHtmlElement(element) &&
+              renderConfig.htmlSnapshots?.has(element.id)
+            )
           ) {
             const label = {
               ...createPlaceholderEmbeddableLabel(

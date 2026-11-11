@@ -96,6 +96,7 @@ export {
   actionTableDeleteColumn,
   actionToggleTableHeaderRow,
 } from "./actionTable";
+export { actionEditHtmlFrame, actionUpdateHtmlFrame } from "./actionHtmlFrame";
 export { actionLink } from "./actionLink";
 export { actionToggleElementLock } from "./actionElementLock";
 export { actionToggleLinearEditor } from "./actionLinearEditor";
