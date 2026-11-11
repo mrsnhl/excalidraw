@@ -1,10 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { debounce, findUnknownVariableRanges } from "@excalidraw/common";
+import {
+  debounce,
+  findUnknownVariableRanges,
+  resolveVariables,
+} from "@excalidraw/common";
 import {
   HTML_FRAME_SANDBOX,
   getHtmlFrameContentBox,
-  getHtmlFrameDocument,
   isHtmlElement,
 } from "@excalidraw/element";
 
@@ -43,6 +46,10 @@ export const HtmlFrameDialog = ({
   const frame = isHtmlElement(element) && !element.isDeleted ? element : null;
 
   const [html, setHtml] = useState(frame?.html ?? "");
+  // the markup the edit started from: a different markup on Apply means
+  // someone else changed the frame meanwhile
+  const [baseHtml, setBaseHtml] = useState(html);
+  const [notice, setNotice] = useState<"locked" | "conflict" | null>(null);
   const [previewHtml, setPreviewHtml] = useState(html);
   const [updatePreview] = useState(() =>
     debounce((next: string) => setPreviewHtml(next), PREVIEW_DELAY_MS),
@@ -94,10 +101,29 @@ export const HtmlFrameDialog = ({
       ? Math.min(1, stageSize.width / box.width, stageSize.height / box.height)
       : 1;
 
+  // the dialog stays open when Apply cannot write the markup, so the typed
+  // markup is not lost
   const apply = () => {
     updatePreview.cancel();
+    // read the frame again: a collaborator can change it without a re-render
+    const current = app.scene.getElement(elementId);
+    if (!isHtmlElement(current) || current.isDeleted) {
+      onClose();
+      return;
+    }
+    if (current.locked || app.state.viewModeEnabled) {
+      setNotice("locked");
+      return;
+    }
+    if (current.html !== baseHtml && current.html !== html) {
+      setBaseHtml(current.html);
+      setNotice("conflict");
+      return;
+    }
+    // markup the user applied runs at once, also when it is unchanged
+    app.trustHtmlFrame(current.id, html);
     actionManager.executeAction(actionUpdateHtmlFrame, "ui", {
-      elementId: frame.id,
+      elementId: current.id,
       html,
     });
     onClose();
@@ -149,7 +175,7 @@ export const HtmlFrameDialog = ({
                 title={t("htmlFrame.previewTitle")}
                 sandbox={HTML_FRAME_SANDBOX}
                 referrerPolicy="no-referrer"
-                srcDoc={getHtmlFrameDocument({ html: previewHtml }, variables)}
+                srcDoc={resolveVariables(previewHtml, variables)}
                 style={{
                   width: box.width,
                   height: box.height,
@@ -158,6 +184,13 @@ export const HtmlFrameDialog = ({
               />
             </div>
           </div>
+          {notice && (
+            <div className="HtmlFrameDialog__notice" role="alert">
+              {t(
+                notice === "locked" ? "htmlFrame.locked" : "htmlFrame.conflict",
+              )}
+            </div>
+          )}
           {unknownNames.length > 0 && (
             <div className="HtmlFrameDialog__unknown" role="status">
               {t("htmlFrame.unknownVariables", {

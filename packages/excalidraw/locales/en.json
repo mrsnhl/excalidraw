@@ -363,6 +363,7 @@
     "libraryElementTypeError": {
       "embeddable": "Embeddable elements cannot be added to the library.",
       "iframe": "IFrame elements cannot be added to the library.",
+      "html": "HTML frames cannot be added to the library.",
       "image": "Support for adding images to the library coming soon!"
     },
     "asyncPasteFailedOnRead": "Couldn't paste (couldn't read from system clipboard).",
@@ -734,7 +735,11 @@
     "frameTitle": "HTML frame",
     "apply": "Apply",
     "cancel": "Cancel",
-    "unknownVariables": "Unknown variables: {{names}}"
+    "unknownVariables": "Unknown variables: {{names}}",
+    "run": "Run",
+    "runHint": "This HTML comes from a file or another person, so its scripts are paused. Run it only if you trust it.",
+    "locked": "The frame is locked or the editor is in view mode. Copy your changes, or unlock the frame and apply again.",
+    "conflict": "Someone else changed this frame while you edited it. Apply again to replace their change."
   },
   "mermaid": {
     "title": "Mermaid to Excalidraw",

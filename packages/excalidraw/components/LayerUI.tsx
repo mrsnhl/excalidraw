@@ -623,6 +623,8 @@ const LayerUI = ({
       )}
       {defaultUIEnabled && appState.openDialog?.name === "htmlEditor" && (
         <HtmlFrameDialog
+          // a new frame starts a new edit, not the last frame's markup
+          key={appState.openDialog.elementId}
           elementId={appState.openDialog.elementId}
           onClose={closeHtmlFrameDialog}
         />

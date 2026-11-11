@@ -144,6 +144,7 @@ export const DRAGGABLE_TOOLS: Partial<Record<ToolType, DraggableTool>> = {
     },
     onDrop: (app, element) => {
       if (isHtmlElement(element)) {
+        app.trustHtmlFrame(element.id, element.html);
         app.openHtmlFrameEditor(element);
       }
     },

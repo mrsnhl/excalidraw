@@ -1260,6 +1260,7 @@ export type AppClassProperties = {
   toggleLock: App["toggleLock"];
   setActiveTool: App["setActiveTool"];
   setOpenDialog: App["setOpenDialog"];
+  trustHtmlFrame: App["trustHtmlFrame"];
   insertEmbeddableElement: App["insertEmbeddableElement"];
   onMagicframeToolSelect: App["onMagicframeToolSelect"];
   getName: App["getName"];

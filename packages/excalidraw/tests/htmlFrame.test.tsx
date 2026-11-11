@@ -9,7 +9,7 @@ import {
   buildHtmlSnapshotSvg,
   countVariableUsage,
 } from "@excalidraw/element";
-import { KEYS } from "@excalidraw/common";
+import { KEYS, LIBRARY_DISABLED_TYPES } from "@excalidraw/common";
 
 import type {
   ExcalidrawElement,
@@ -22,6 +22,7 @@ import {
   actionEditHtmlFrame,
   actionUpdateHtmlFrame,
 } from "../actions/actionHtmlFrame";
+import { actionAddToLibrary } from "../actions/actionAddToLibrary";
 import {
   actionDeleteVariable,
   actionRenameVariable,
@@ -41,6 +42,7 @@ import {
   restoreOriginalGetBoundingClientRect,
   screen,
   unmountComponent,
+  fireEvent,
   waitFor,
 } from "./test-utils";
 
@@ -174,6 +176,49 @@ describe("HTML editor", () => {
     expect(screen.getByRole("status").textContent).toContain("{{ghost}}");
   });
 
+  it("keeps the dialog open when the frame is locked meanwhile", async () => {
+    const frame = createFrame("<p>old</p>");
+    API.setSelectedElements([frame]);
+    run(actionEditHtmlFrame);
+    await screen.findByTestId("html-frame-preview");
+
+    API.updateScene({
+      elements: h.elements.map((element) =>
+        element.id === frame.id ? { ...element, locked: true } : element,
+      ),
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    fireEvent.click(screen.getByText("Apply"));
+
+    expect(screen.getByRole("alert").textContent).toContain("locked");
+    expect(h.state.openDialog?.name).toBe("htmlEditor");
+    expect(getFrames()[0].html).toBe("<p>old</p>");
+  });
+
+  it("warns before it replaces a change from someone else", async () => {
+    const frame = createFrame("<p>old</p>");
+    API.setSelectedElements([frame]);
+    run(actionEditHtmlFrame);
+    await screen.findByTestId("html-frame-preview");
+
+    API.updateScene({
+      elements: h.elements.map((element) =>
+        element.id === frame.id
+          ? { ...element, html: "<p>theirs</p>" }
+          : element,
+      ),
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    fireEvent.click(screen.getByText("Apply"));
+    expect(screen.getByRole("alert").textContent).toContain("Someone else");
+    expect(getFrames()[0].html).toBe("<p>theirs</p>");
+
+    // the second Apply replaces their change with the dialog's markup
+    fireEvent.click(screen.getByText("Apply"));
+    expect(getFrames()[0].html).toBe("<p>old</p>");
+    expect(h.state.openDialog).toBe(null);
+  });
+
   it("applies the markup as one undoable step", () => {
     const frame = createFrame("<p>old</p>");
     run(actionUpdateHtmlFrame, {
@@ -195,12 +240,79 @@ describe("live frame", () => {
     restoreOriginalGetBoundingClientRect();
   });
 
-  it("renders the resolved markup in a sandboxed iframe", async () => {
+  const renderSmallEditor = async () => {
     unmountComponent();
     await render(<Excalidraw />);
     await waitFor(() => expect(h.state.width).toBe(200));
+  };
+
+  const getLiveIframe = () =>
+    document.querySelector<HTMLIFrameElement>("iframe.excalidraw__embeddable");
+
+  it("pauses markup from elsewhere until the user runs it", async () => {
+    await renderSmallEditor();
     addVariable("price", "$12");
-    createFrame("<p>{{price}}</p>", { x: 10, y: 10, width: 100, height: 80 });
+    createFrame("<p>{{price}}</p><script>parent.x=1</script>", {
+      x: 10,
+      y: 10,
+      width: 100,
+      height: 80,
+    });
+
+    const paused = await screen.findByTestId("html-frame-paused");
+    expect(getLiveIframe()).toBe(null);
+    // the snapshot shows the markup without its scripts
+    const snapshot = decodeURIComponent(
+      paused.querySelector("img")?.getAttribute("src") ?? "",
+    );
+    expect(snapshot).toContain("$12");
+    expect(snapshot).not.toContain("<script");
+
+    fireEvent.click(screen.getByRole("button", { name: /Run/ }));
+    await waitFor(() => expect(getLiveIframe()).not.toBe(null));
+    expect(screen.queryByTestId("html-frame-paused")).toBe(null);
+
+    // markup that changes after the run (e.g. by a collaborator) pauses again
+    API.updateScene({
+      elements: h.elements.map((element) =>
+        element.type === "html"
+          ? { ...element, html: "<p>other</p>" }
+          : element,
+      ),
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    await screen.findByTestId("html-frame-paused");
+  });
+
+  it("runs markup the user creates or applies at once", async () => {
+    await renderSmallEditor();
+    UI.clickTool("html");
+    mouse.downAt(10, 10);
+    mouse.moveTo(110, 90);
+    mouse.upAt(110, 90);
+    await waitFor(() => expect(getLiveIframe()).not.toBe(null));
+    API.setAppState({ openDialog: null });
+
+    const frame = createFrame("<p>old</p>", { x: 120, y: 10 });
+    await screen.findByTestId("html-frame-paused");
+    API.setSelectedElements([frame]);
+    run(actionEditHtmlFrame);
+    fireEvent.click(await screen.findByText("Apply"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("html-frame-paused")).toBe(null),
+    );
+  });
+
+  it("renders the resolved markup in a sandboxed iframe", async () => {
+    await renderSmallEditor();
+    addVariable("price", "$12");
+    const frame = createFrame("<p>{{price}}</p>", {
+      x: 10,
+      y: 10,
+      width: 100,
+      height: 80,
+    });
+    act(() => h.app.trustHtmlFrame(frame.id, frame.html));
 
     await waitFor(() => {
       const iframe = document.querySelector<HTMLIFrameElement>(
@@ -209,6 +321,50 @@ describe("live frame", () => {
       expect(iframe?.getAttribute("srcdoc")).toBe("<p>$12</p>");
       expect(iframe?.getAttribute("sandbox")).toBe(HTML_FRAME_SANDBOX);
     });
+  });
+});
+
+describe("frame activation", () => {
+  const center = (frame: ExcalidrawHtmlElement) =>
+    [frame.x + frame.width / 2, frame.y + frame.height / 2] as const;
+
+  it("waits for the double-click window before it activates", async () => {
+    const frame = createFrame("<p>hi</p>");
+    act(() => h.app.trustHtmlFrame(frame.id, frame.html));
+    mouse.clickAt(...center(frame));
+    expect(h.state.activeEmbeddable?.state).not.toBe("active");
+    await waitFor(() => expect(h.state.activeEmbeddable?.state).toBe("active"));
+  });
+
+  it("opens the editor on a double-click and does not activate", async () => {
+    const frame = createFrame("<p>hi</p>");
+    act(() => h.app.trustHtmlFrame(frame.id, frame.html));
+    mouse.clickAt(...center(frame));
+    mouse.clickAt(...center(frame));
+    mouse.doubleClickAt(...center(frame));
+    expect(h.state.openDialog?.name).toBe("htmlEditor");
+
+    await act(() => new Promise((resolve) => setTimeout(resolve, 700)));
+    expect(h.state.activeEmbeddable?.state).not.toBe("active");
+  });
+
+  it("does not activate a paused frame", async () => {
+    const frame = createFrame("<p>hi</p>");
+    mouse.clickAt(...center(frame));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 700)));
+    expect(h.state.activeEmbeddable).toBe(null);
+  });
+});
+
+describe("library", () => {
+  it("does not take HTML frames", () => {
+    expect(LIBRARY_DISABLED_TYPES.has("html")).toBe(true);
+    const frame = createFrame();
+    API.setSelectedElements([frame]);
+    run(actionAddToLibrary);
+    expect(h.state.errorMessage).toBe(
+      "HTML frames cannot be added to the library.",
+    );
   });
 });
 
@@ -304,6 +460,44 @@ describe("export", () => {
         .parseFromString(svg!, "image/svg+xml")
         .querySelector("parsererror"),
     ).toBe(null);
+  });
+
+  const parseSvg = (svg: string) =>
+    new DOMParser().parseFromString(svg, "image/svg+xml");
+
+  it("drops attribute names that are not valid XML", () => {
+    const svg = buildHtmlSnapshotSvg(
+      `<div @click="go" :class="a" x-on:click="b" foo:bar="c" class="kept">Hi</div>`,
+      100,
+      50,
+      document,
+    );
+    expect(svg).not.toBe(null);
+    expect(parseSvg(svg!).querySelector("parsererror")).toBe(null);
+    expect(svg).toContain('class="kept"');
+    expect(svg).not.toMatch(/@click|:class|x-on|foo:bar/);
+  });
+
+  it("drops event handlers, script URLs and resource tags", () => {
+    const svg = buildHtmlSnapshotSvg(
+      `<base href="https://evil.test/"><link rel="stylesheet" href="x.css">` +
+        `<meta http-equiv="refresh" content="0;url=https://evil.test">` +
+        `<img src="x" onerror="alert(1)"><a href=" java\tscript:alert(1)">a</a>` +
+        `<a href="https://example.com">b</a>`,
+      100,
+      50,
+      document,
+    )!;
+    expect(svg).not.toMatch(/onerror|script:|<base|<link|<meta/i);
+    expect(svg).toContain('href="https://example.com"');
+  });
+
+  it("returns null when the markup cannot become well-formed XML", () => {
+    const svg = buildHtmlSnapshotSvg("<my:tag>hi</my:tag>", 100, 50, document);
+    if (svg !== null) {
+      // the parser in this environment accepted it: it must still parse
+      expect(parseSvg(svg).querySelector("parsererror")).toBe(null);
+    }
   });
 
   it("falls back to the placeholder when there is no DOM parser", () => {

@@ -40,7 +40,8 @@
       background: transparent;
     }
 
-    &__unknown {
+    &__unknown,
+    &__notice {
       margin-top: 0.5rem;
       padding: 0.5rem 0.75rem;
       border-radius: var(--border-radius-md);
